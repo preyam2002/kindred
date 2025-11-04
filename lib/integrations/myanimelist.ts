@@ -1,0 +1,381 @@
+// MyAnimeList API integration utilities using client_auth (API key)
+import { supabase } from "@/lib/db/supabase";
+
+const MAL_API_URL = "https://api.myanimelist.net/v2";
+const MAL_CLIENT_ID = process.env.MYANIMELIST_CLIENT_ID || "";
+
+/**
+ * Get user's anime list using client_auth (API key)
+ * Per API docs: client_auth is sufficient for reading public lists
+ */
+export async function getMALAnimeList(
+  username: string,
+  limit: number = 100,
+  offset: number = 0,
+  status?: "watching" | "completed" | "on_hold" | "dropped" | "plan_to_watch"
+): Promise<any> {
+  const fields = "id,title,main_picture,mean,genres,media_type,num_episodes,status,my_list_status";
+  let url = `${MAL_API_URL}/users/${username}/animelist?fields=${fields}&limit=${limit}&offset=${offset}`;
+
+  if (status) {
+    url += `&status=${status}`;
+  }
+
+  const response = await fetch(url, {
+    headers: {
+      "X-MAL-CLIENT-ID": MAL_CLIENT_ID,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch anime list: ${response.statusText}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Get user's manga list using client_auth (API key)
+ * Per API docs: client_auth is sufficient for reading public lists
+ */
+export async function getMALMangaList(
+  username: string,
+  limit: number = 100,
+  offset: number = 0,
+  status?: "reading" | "completed" | "on_hold" | "dropped" | "plan_to_read"
+): Promise<any> {
+  const fields = "id,title,main_picture,mean,genres,media_type,num_chapters,status,my_list_status";
+  let url = `${MAL_API_URL}/users/${username}/mangalist?fields=${fields}&limit=${limit}&offset=${offset}`;
+
+  if (status) {
+    url += `&status=${status}`;
+  }
+
+  const response = await fetch(url, {
+    headers: {
+      "X-MAL-CLIENT-ID": MAL_CLIENT_ID,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch manga list: ${response.statusText}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Sync user's anime and manga from MAL
+ */
+export async function syncMALData(
+  userId: string,
+  accessToken: string
+): Promise<{ animeImported: number; mangaImported: number; errors: number }> {
+  // Verify user exists before proceeding
+  const { data: user, error: userError } = await supabase
+    .from("users")
+    .select("id")
+    .eq("id", userId)
+    .single();
+
+  if (userError || !user) {
+    console.error(`User not found: ${userId}`, userError);
+    throw new Error(`User not found: ${userId}`);
+  }
+
+  try {
+    let animeImported = 0;
+    let mangaImported = 0;
+    let errors = 0;
+
+    // Collect all anime and manga items first
+    const allAnimeItems: Array<{ anime: any; listStatus: any }> = [];
+    const allMangaItems: Array<{ manga: any; listStatus: any }> = [];
+
+    // Fetch anime list
+    try {
+      let offset = 0;
+      const limit = 100;
+      let hasMore = true;
+
+      while (hasMore) {
+        const animeData = await getMALAnimeList(malUsername, limit, offset);
+        const animeList = animeData.data || [];
+
+        for (const item of animeList) {
+          if (item.node && item.node.id) {
+            allAnimeItems.push({
+              anime: item.node,
+              listStatus: item.list_status,
+            });
+          }
+        }
+
+        hasMore = animeList.length === limit;
+        offset += limit;
+      }
+    } catch (error) {
+      console.error("Error fetching anime list:", error);
+      errors++;
+    }
+
+    // Fetch manga list
+    try {
+      let offset = 0;
+      const limit = 100;
+      let hasMore = true;
+
+      while (hasMore) {
+        const mangaData = await getMALMangaList(malUsername, limit, offset);
+        const mangaList = mangaData.data || [];
+
+        for (const item of mangaList) {
+          if (item.node && item.node.id) {
+            allMangaItems.push({
+              manga: item.node,
+              listStatus: item.list_status,
+            });
+          }
+        }
+
+        hasMore = mangaList.length === limit;
+        offset += limit;
+      }
+    } catch (error) {
+      console.error("Error fetching manga list:", error);
+      errors++;
+    }
+
+    // Process anime and manga separately
+    const animeItems = allAnimeItems.map(item => ({
+      id: item.anime.id.toString(),
+      title: item.anime.title,
+      genre: item.anime.genres?.map((g: any) => g.name) || undefined,
+      poster_url: item.anime.main_picture?.medium || undefined,
+      num_episodes: item.anime.num_episodes || undefined,
+      listStatus: item.listStatus,
+    }));
+
+    const mangaItems = allMangaItems.map(item => ({
+      id: item.manga.id.toString(),
+      title: item.manga.title,
+      genre: item.manga.genres?.map((g: any) => g.name) || undefined,
+      poster_url: item.manga.main_picture?.medium || undefined,
+      num_chapters: item.manga.num_chapters || undefined,
+      listStatus: item.listStatus,
+    }));
+
+    if (animeItems.length === 0 && mangaItems.length === 0) {
+      return { animeImported: 0, mangaImported: 0, errors };
+    }
+
+    // Step 1: Batch check existing anime items
+    const animeIds = animeItems.map(item => item.id);
+    const { data: existingAnimeItems } = animeIds.length > 0
+      ? await supabase
+          .from("anime")
+          .select("id, source_item_id")
+          .eq("source", "myanimelist")
+          .in("source_item_id", animeIds)
+      : { data: null };
+
+    const existingAnimeMap = new Map(
+      (existingAnimeItems || []).map(item => [item.source_item_id, item.id])
+    );
+
+    // Step 2: Batch check existing manga items
+    const mangaIds = mangaItems.map(item => item.id);
+    const { data: existingMangaItems } = mangaIds.length > 0
+      ? await supabase
+          .from("manga")
+          .select("id, source_item_id")
+          .eq("source", "myanimelist")
+          .in("source_item_id", mangaIds)
+      : { data: null };
+
+    const existingMangaMap = new Map(
+      (existingMangaItems || []).map(item => [item.source_item_id, item.id])
+    );
+
+    // Step 3: Prepare new anime and manga items
+    const newAnimeItems: Array<{
+      source: string;
+      source_item_id: string;
+      title: string;
+      genre?: string[];
+      poster_url?: string;
+      num_episodes?: number;
+    }> = [];
+
+    const newMangaItems: Array<{
+      source: string;
+      source_item_id: string;
+      title: string;
+      genre?: string[];
+      poster_url?: string;
+      num_chapters?: number;
+    }> = [];
+
+    const animeItemMap = new Map<string, string>();
+    const mangaItemMap = new Map<string, string>();
+
+    for (const item of animeItems) {
+      const existingId = existingAnimeMap.get(item.id);
+      if (existingId) {
+        animeItemMap.set(item.id, existingId);
+      } else {
+        newAnimeItems.push({
+          source: "myanimelist",
+          source_item_id: item.id,
+          title: item.title,
+          genre: item.genre,
+          poster_url: item.poster_url,
+          num_episodes: item.num_episodes,
+        });
+      }
+    }
+
+    for (const item of mangaItems) {
+      const existingId = existingMangaMap.get(item.id);
+      if (existingId) {
+        mangaItemMap.set(item.id, existingId);
+      } else {
+        newMangaItems.push({
+          source: "myanimelist",
+          source_item_id: item.id,
+          title: item.title,
+          genre: item.genre,
+          poster_url: item.poster_url,
+          num_chapters: item.num_chapters,
+        });
+      }
+    }
+
+    // Step 4: Batch insert new anime items
+    if (newAnimeItems.length > 0) {
+      const { data: insertedAnimeItems, error: insertError } = await supabase
+        .from("anime")
+        .insert(newAnimeItems)
+        .select("id, source_item_id");
+
+      if (insertError) {
+        console.error("Error batch inserting anime items:", insertError);
+        errors += newAnimeItems.length;
+      } else {
+        insertedAnimeItems?.forEach(item => {
+          animeItemMap.set(item.source_item_id, item.id);
+        });
+      }
+    }
+
+    // Step 5: Batch insert new manga items
+    if (newMangaItems.length > 0) {
+      const { data: insertedMangaItems, error: insertError } = await supabase
+        .from("manga")
+        .insert(newMangaItems)
+        .select("id, source_item_id");
+
+      if (insertError) {
+        console.error("Error batch inserting manga items:", insertError);
+        errors += newMangaItems.length;
+      } else {
+        insertedMangaItems?.forEach(item => {
+          mangaItemMap.set(item.source_item_id, item.id);
+        });
+      }
+    }
+
+    // Step 6: Prepare user_media records
+    const userMediaRecords: Array<{
+      user_id: string;
+      media_type: string;
+      media_id: string;
+      rating?: number;
+      timestamp: Date;
+      tags?: string[];
+    }> = [];
+
+    for (const item of animeItems) {
+      const animeId = animeItemMap.get(item.id);
+      if (!animeId) {
+        errors++;
+        continue;
+      }
+
+      const timestamp = item.listStatus?.updated_at
+        ? new Date(item.listStatus.updated_at)
+        : new Date();
+
+      const rating = item.listStatus?.score && item.listStatus.score > 0
+        ? item.listStatus.score
+        : undefined;
+
+      userMediaRecords.push({
+        user_id: userId,
+        media_type: "anime",
+        media_id: animeId,
+        rating,
+        timestamp,
+        tags: item.listStatus?.status ? [item.listStatus.status] : undefined,
+      });
+    }
+
+    for (const item of mangaItems) {
+      const mangaId = mangaItemMap.get(item.id);
+      if (!mangaId) {
+        errors++;
+        continue;
+      }
+
+      const timestamp = item.listStatus?.updated_at
+        ? new Date(item.listStatus.updated_at)
+        : new Date();
+
+      const rating = item.listStatus?.score && item.listStatus.score > 0
+        ? item.listStatus.score
+        : undefined;
+
+      userMediaRecords.push({
+        user_id: userId,
+        media_type: "manga",
+        media_id: mangaId,
+        rating,
+        timestamp,
+        tags: item.listStatus?.status ? [item.listStatus.status] : undefined,
+      });
+    }
+
+    // Step 7: Batch upsert user_media records
+    if (userMediaRecords.length > 0) {
+      const BATCH_SIZE = 500;
+      for (let i = 0; i < userMediaRecords.length; i += BATCH_SIZE) {
+        const batch = userMediaRecords.slice(i, i + BATCH_SIZE);
+        const { error: userMediaError } = await supabase
+          .from("user_media")
+          .upsert(batch, {
+            onConflict: "user_id,media_type,media_id",
+          });
+
+        if (userMediaError) {
+          console.error(`Error batch upserting user_media (batch ${i / BATCH_SIZE + 1}):`, userMediaError);
+          errors += batch.length;
+        } else {
+          // Count anime vs manga in this batch
+          for (const record of batch) {
+            if (record.media_type === "anime") {
+              animeImported++;
+            } else if (record.media_type === "manga") {
+              mangaImported++;
+            }
+          }
+        }
+      }
+    }
+
+    return { animeImported, mangaImported, errors };
+  } catch (error) {
+    console.error("Error syncing MAL data:", error);
+    throw error;
+  }
+}
+

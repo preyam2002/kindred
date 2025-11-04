@@ -1,0 +1,611 @@
+"use client";
+
+import { useSession } from "next-auth/react";
+import { motion } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+import {
+  BookOpen,
+  Film,
+  Music,
+  Tv,
+  Link2,
+  Check,
+  Upload,
+  X,
+  ExternalLink,
+} from "lucide-react";
+import type { Source } from "@/types/database";
+
+const integrations = [
+  {
+    name: "Goodreads",
+    id: "goodreads",
+    icon: BookOpen,
+    description: "Import your books and reading activity",
+    color: "text-primary",
+  },
+  {
+    name: "MyAnimeList",
+    id: "myanimelist",
+    icon: Tv,
+    description: "Sync your anime and manga lists",
+    color: "text-secondary",
+  },
+  {
+    name: "Letterboxd",
+    id: "letterboxd",
+    icon: Film,
+    description: "Connect your movie watchlist and reviews",
+    color: "text-primary",
+  },
+  {
+    name: "Spotify",
+    id: "spotify",
+    icon: Music,
+    description: "Import your music listening history",
+    color: "text-secondary",
+  },
+];
+
+export default function SettingsPage() {
+  const { data: session } = useSession();
+  const [connectedSources, setConnectedSources] = useState<Source[]>([]);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+  const [showGoodreadsUpload, setShowGoodreadsUpload] = useState(false);
+  const [showLetterboxdUpload, setShowLetterboxdUpload] = useState(false);
+  const [uploadingGoodreads, setUploadingGoodreads] = useState(false);
+  const [uploadingLetterboxd, setUploadingLetterboxd] = useState(false);
+  const [profileUrl, setProfileUrl] = useState("");
+  const [letterboxdProfileUrl, setLetterboxdProfileUrl] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const letterboxdFileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetchConnections();
+    }
+
+    // Check for URL params for success/error messages
+    const params = new URLSearchParams(window.location.search);
+    const connected = params.get("connected");
+    const error = params.get("error");
+
+    if (connected) {
+      setMessage({
+        type: "success",
+        text: `Successfully connected to ${connected}!`,
+      });
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (error) {
+      setMessage({
+        type: "error",
+        text: "An error occurred. Please try again.",
+      });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [session]);
+
+  async function fetchConnections() {
+    try {
+      const res = await fetch("/api/integrations");
+      const data = await res.json();
+      setConnectedSources(data.sources || []);
+    } catch (error) {
+      console.error("Error fetching connections:", error);
+    }
+  }
+
+  async function handleConnect(sourceName: string) {
+    if (sourceName === "goodreads") {
+      setShowGoodreadsUpload(true);
+    } else if (sourceName === "letterboxd") {
+      setShowLetterboxdUpload(true);
+    } else {
+      // For other integrations, redirect to OAuth flow
+      window.location.href = `/api/integrations/${sourceName}/connect`;
+    }
+  }
+
+  async function handleGoodreadsUpload(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const file = fileInputRef.current?.files?.[0];
+
+    if (!file) {
+      setMessage({ type: "error", text: "Please select a CSV file" });
+      return;
+    }
+
+    setUploadingGoodreads(true);
+    setMessage(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      if (profileUrl.trim()) {
+        formData.append("profileUrl", profileUrl.trim());
+      }
+
+      const res = await fetch("/api/integrations/goodreads/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setMessage({
+          type: "success",
+          text: data.message || `Successfully imported ${data.imported} books!`,
+        });
+        setShowGoodreadsUpload(false);
+        setProfileUrl("");
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        fetchConnections();
+      } else {
+        setMessage({
+          type: "error",
+          text: data.error || "Failed to upload CSV file",
+        });
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      setMessage({
+        type: "error",
+        text: "An error occurred while uploading the file",
+      });
+    } finally {
+      setUploadingGoodreads(false);
+    }
+  }
+
+  async function handleLetterboxdUpload(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const file = letterboxdFileInputRef.current?.files?.[0];
+
+    if (!file) {
+      setMessage({ type: "error", text: "Please select a CSV file" });
+      return;
+    }
+
+    setUploadingLetterboxd(true);
+    setMessage(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      if (letterboxdProfileUrl.trim()) {
+        formData.append("profileUrl", letterboxdProfileUrl.trim());
+      }
+
+      const res = await fetch("/api/integrations/letterboxd/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setMessage({
+          type: "success",
+          text: data.message || `Successfully imported ${data.imported} films!`,
+        });
+        setShowLetterboxdUpload(false);
+        setLetterboxdProfileUrl("");
+        if (letterboxdFileInputRef.current) {
+          letterboxdFileInputRef.current.value = "";
+        }
+        fetchConnections();
+      } else {
+        setMessage({
+          type: "error",
+          text: data.error || "Failed to upload CSV file",
+        });
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      setMessage({
+        type: "error",
+        text: "An error occurred while uploading the file",
+      });
+    } finally {
+      setUploadingLetterboxd(false);
+    }
+  }
+
+  async function handleDisconnect(sourceId: string) {
+    try {
+      const res = await fetch(`/api/integrations/delete/${sourceId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        fetchConnections();
+      }
+    } catch (error) {
+      console.error("Error disconnecting:", error);
+    }
+  }
+
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Please sign in</h1>
+          <Link href="/auth/login" className="text-primary hover:underline">
+            Log in
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="container mx-auto px-6 py-12 max-w-4xl">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <h1 className="text-4xl font-bold mb-2">Settings</h1>
+          <p className="text-muted-foreground mb-12">
+            Connect your tracking platforms to build your profile
+          </p>
+
+          {message && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`mb-6 p-4 rounded-md ${
+                message.type === "success"
+                  ? "bg-primary/20 text-primary border border-primary/30"
+                  : "bg-destructive/20 text-destructive border border-destructive/30"
+              }`}
+            >
+              {message.text}
+            </motion.div>
+          )}
+
+          <div className="space-y-4">
+            {integrations.map((integration) => {
+              const Icon = integration.icon;
+              const isConnected = connectedSources.some(
+                (s) => s.source_name === integration.id
+              );
+              const connectedSource = connectedSources.find(
+                (s) => s.source_name === integration.id
+              );
+
+              return (
+                <motion.div
+                  key={integration.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="border border-border rounded-lg p-6 bg-card"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-4">
+                      <div
+                        className={`w-12 h-12 rounded-lg bg-muted flex items-center justify-center ${integration.color}`}
+                      >
+                        <Icon className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold mb-1">
+                          {integration.name}
+                        </h3>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          {integration.description}
+                        </p>
+                        {isConnected && (
+                          <div className="flex items-center gap-2 text-sm text-primary">
+                            <Check className="w-4 h-4" />
+                            <span>Connected</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {isConnected ? (
+                        <button
+                          onClick={() =>
+                            connectedSource &&
+                            handleDisconnect(connectedSource.id)
+                          }
+                          className="px-4 py-2 border border-border rounded-md hover:bg-accent transition-colors text-sm"
+                        >
+                          Disconnect
+                        </button>
+                      ) : integration.id === "goodreads" ||
+                        integration.id === "letterboxd" ? (
+                        <button
+                          onClick={() => handleConnect(integration.id)}
+                          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity flex items-center gap-2 text-sm"
+                        >
+                          <Upload className="w-4 h-4" />
+                          Upload CSV
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleConnect(integration.id)}
+                          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity flex items-center gap-2 text-sm"
+                        >
+                          <Link2 className="w-4 h-4" />
+                          Connect
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          <div className="mt-12 p-6 border border-border rounded-lg bg-card">
+            <h2 className="text-xl font-bold mb-2">Sync Data</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Manually sync data from your connected platforms
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {connectedSources.map((source) => (
+                <button
+                  key={source.id}
+                  onClick={async () => {
+                    try {
+                      setMessage({
+                        type: "success",
+                        text: `Syncing ${source.source_name}...`,
+                      });
+                      const res = await fetch(
+                        `/api/integrations/${source.source_name}/sync`,
+                        { method: "POST" }
+                      );
+                      if (res.ok) {
+                        const data = await res.json();
+                        setMessage({
+                          type: "success",
+                          text:
+                            data.message ||
+                            `${source.source_name} synced successfully!`,
+                        });
+                        // Refresh connections
+                        fetchConnections();
+                      } else {
+                        const error = await res.json();
+                        setMessage({
+                          type: "error",
+                          text:
+                            error.error ||
+                            `Failed to sync ${source.source_name}`,
+                        });
+                      }
+                    } catch (error) {
+                      console.error("Sync error:", error);
+                      setMessage({
+                        type: "error",
+                        text: `Error syncing ${source.source_name}`,
+                      });
+                    }
+                  }}
+                  className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:opacity-90 transition-opacity text-sm capitalize"
+                >
+                  Sync {source.source_name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Goodreads CSV Upload Modal */}
+      {showGoodreadsUpload && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-card border border-border rounded-lg p-6 max-w-md w-full"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold">Import Goodreads Data</h2>
+              <button
+                onClick={() => {
+                  setShowGoodreadsUpload(false);
+                  setProfileUrl("");
+                  setUploadingGoodreads(false);
+                  if (fileInputRef.current) {
+                    fileInputRef.current.value = "";
+                  }
+                }}
+                disabled={uploadingGoodreads}
+                className="text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-4 p-4 bg-muted/50 rounded-md border border-border">
+              <p className="text-sm mb-2">To export your Goodreads data:</p>
+              <Link
+                href="https://www.goodreads.com/review/import"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+              >
+                Go to Goodreads Export
+                <ExternalLink className="w-3 h-3" />
+              </Link>
+              <p className="text-xs text-muted-foreground mt-2">
+                Download your library as a CSV file, then upload it here.
+              </p>
+            </div>
+
+            <form onSubmit={handleGoodreadsUpload} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  CSV File
+                </label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv"
+                  required
+                  className="w-full px-4 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Goodreads Profile URL (optional)
+                </label>
+                <input
+                  type="url"
+                  value={profileUrl}
+                  onChange={(e) => setProfileUrl(e.target.value)}
+                  placeholder="https://www.goodreads.com/user/show/123456"
+                  className="w-full px-4 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Your public Goodreads profile URL for linking
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  disabled={uploadingGoodreads}
+                  className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {uploadingGoodreads ? "Uploading..." : "Upload CSV"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowGoodreadsUpload(false);
+                    setProfileUrl("");
+                    setUploadingGoodreads(false);
+                    if (fileInputRef.current) {
+                      fileInputRef.current.value = "";
+                    }
+                  }}
+                  disabled={uploadingGoodreads}
+                  className="px-4 py-2 border border-border rounded-md hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Letterboxd CSV Upload Modal */}
+      {showLetterboxdUpload && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-card border border-border rounded-lg p-6 max-w-md w-full"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold">Import Letterboxd Data</h2>
+              <button
+                onClick={() => {
+                  setShowLetterboxdUpload(false);
+                  setLetterboxdProfileUrl("");
+                  setUploadingLetterboxd(false);
+                  if (letterboxdFileInputRef.current) {
+                    letterboxdFileInputRef.current.value = "";
+                  }
+                }}
+                disabled={uploadingLetterboxd}
+                className="text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-4 p-4 bg-muted/50 rounded-md border border-border">
+              <p className="text-sm mb-2">To export your Letterboxd data:</p>
+              <Link
+                href="https://letterboxd.com/import/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+              >
+                Go to Letterboxd Import
+                <ExternalLink className="w-3 h-3" />
+              </Link>
+              <p className="text-xs text-muted-foreground mt-2">
+                Follow the instructions to export your films (CSV or ZIP), then
+                upload it here.
+              </p>
+            </div>
+
+            <form onSubmit={handleLetterboxdUpload} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  CSV or ZIP File
+                </label>
+                <input
+                  ref={letterboxdFileInputRef}
+                  type="file"
+                  accept=".csv,.zip"
+                  required
+                  className="w-full px-4 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Upload your Letterboxd export (CSV file or ZIP archive)
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Letterboxd Profile URL (optional)
+                </label>
+                <input
+                  type="url"
+                  value={letterboxdProfileUrl}
+                  onChange={(e) => setLetterboxdProfileUrl(e.target.value)}
+                  placeholder="https://letterboxd.com/username/"
+                  className="w-full px-4 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Your public Letterboxd profile URL for linking
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  disabled={uploadingLetterboxd}
+                  className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {uploadingLetterboxd ? "Uploading..." : "Upload CSV"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLetterboxdUpload(false);
+                    setLetterboxdProfileUrl("");
+                    setUploadingLetterboxd(false);
+                    if (letterboxdFileInputRef.current) {
+                      letterboxdFileInputRef.current.value = "";
+                    }
+                  }}
+                  disabled={uploadingLetterboxd}
+                  className="px-4 py-2 border border-border rounded-md hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+    </>
+  );
+}
