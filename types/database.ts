@@ -25,6 +25,7 @@ export interface Source {
 // Media type interfaces
 export interface Book {
   id: string;
+  type: "book";
   source: "goodreads";
   source_item_id: string;
   title: string;
@@ -38,6 +39,7 @@ export interface Book {
 
 export interface Anime {
   id: string;
+  type: "anime";
   source: "myanimelist";
   source_item_id: string;
   title: string;
@@ -50,6 +52,7 @@ export interface Anime {
 
 export interface Manga {
   id: string;
+  type: "manga";
   source: "myanimelist";
   source_item_id: string;
   title: string;
@@ -62,6 +65,7 @@ export interface Manga {
 
 export interface Movie {
   id: string;
+  type: "movie";
   source: "letterboxd";
   source_item_id: string;
   title: string;
@@ -74,6 +78,7 @@ export interface Movie {
 
 export interface Music {
   id: string;
+  type: "music";
   source: "spotify";
   source_item_id: string;
   title: string;
@@ -117,4 +122,7 @@ export interface Recommendation {
   score: number;
   created_at: Date;
 }
+
+// Union type for all media items
+export type MediaItem = Book | Anime | Manga | Movie | Music;
 

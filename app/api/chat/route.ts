@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
       .limit(10);
 
     // Build context about the user
-    const userContext = buildUserContext(userData, userMedia, matches);
+    const userContext = buildUserContext(userData, userMedia || [], matches || []);
 
     // Prepare messages for Claude
     const claudeMessages = messageHistory.map((msg: any) => ({

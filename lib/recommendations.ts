@@ -94,30 +94,30 @@ export async function getCollaborativeRecommendations(
   });
 
   // Convert to recommendations
-  const recommendations: Recommendation[] = Array.from(itemScores.entries())
-    .map(([mediaId, score]) => {
-      const avgRating = score.totalRating / score.count;
-      const finalScore = score.count * 0.6 + avgRating * 0.4; // Weight by popularity and rating
+  const recommendations: Recommendation[] = [];
 
-      const found = similarUserMedia.find(
-        (um: any) => um.media_item_id === mediaId
-      );
-      const mediaItem = found?.media_items;
+  for (const [mediaId, score] of itemScores.entries()) {
+    const avgRating = score.totalRating / score.count;
+    const finalScore = score.count * 0.6 + avgRating * 0.4; // Weight by popularity and rating
 
-      if (!mediaItem || !found) return null;
+    const found = similarUserMedia.find(
+      (um: any) => um.media_item_id === mediaId
+    );
+    const mediaItem = found?.media_items;
 
-      return {
-        media: mediaItem as MediaItem,
+    if (mediaItem && found) {
+      recommendations.push({
+        media: mediaItem as unknown as MediaItem,
         reason: `Liked by ${score.count} user${score.count > 1 ? "s" : ""} with similar taste`,
         score: finalScore,
         source: "collaborative",
-      };
-    })
-    .filter((r): r is Recommendation => r !== null)
+      });
+    }
+  }
+
+  return recommendations
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
-
-  return recommendations;
 }
 
 /**
@@ -262,23 +262,25 @@ export async function getSimilarUserRecommendations(
     score.rating = Math.max(score.rating, um.rating || 0);
   });
 
-  return Array.from(itemScores.entries())
-    .map(([mediaId, score]) => {
-      const found = similarUserMedia.find(
-        (um: any) => um.media_item_id === mediaId
-      );
-      const mediaItem = found?.media_items;
+  const recommendations: Recommendation[] = [];
 
-      if (!mediaItem || !found) return null;
+  for (const [mediaId, score] of itemScores.entries()) {
+    const found = similarUserMedia.find(
+      (um: any) => um.media_item_id === mediaId
+    );
+    const mediaItem = found?.media_items;
 
-      return {
-        media: mediaItem as MediaItem,
+    if (mediaItem && found) {
+      recommendations.push({
+        media: mediaItem as unknown as MediaItem,
         reason: `Liked by ${score.count} highly compatible user${score.count > 1 ? "s" : ""}`,
         score: score.count * 10 + score.rating,
-        source: "similar_users" as const,
-      };
-    })
-    .filter((r): r is Recommendation => r !== null)
+        source: "similar_users",
+      });
+    }
+  }
+
+  return recommendations
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 }

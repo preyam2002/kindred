@@ -27,6 +27,7 @@ export async function scrapeLetterboxdProfile(
     const films: LetterboxdFilm[] = [];
     let page = 1;
     let hasMore = true;
+    let displayName: string | undefined;
 
     // Letterboxd paginates, fetch first few pages
     while (hasMore && page <= 5) {
@@ -50,7 +51,6 @@ export async function scrapeLetterboxdProfile(
       const $ = cheerio.load(html);
 
       // Extract display name from first page
-      let displayName: string | undefined;
       if (page === 1) {
         displayName = $(".profile-person h1").text().trim() || username;
       }

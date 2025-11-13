@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get IP and user agent for tracking
-    const ipAddress = request.ip || request.headers.get("x-forwarded-for") || "";
+    const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "";
     const userAgent = request.headers.get("user-agent") || "";
 
     // Record click

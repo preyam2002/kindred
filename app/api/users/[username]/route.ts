@@ -130,7 +130,7 @@ export async function PATCH(
           { status: 400 }
         );
       }
-      updateData.avatar = avatar || null;
+      updateData.avatar = avatar || undefined;
     }
 
     if (bio !== undefined) {
@@ -140,7 +140,7 @@ export async function PATCH(
           { status: 400 }
         );
       }
-      updateData.bio = bio || null;
+      updateData.bio = bio || undefined;
     }
 
     if (newUsername !== undefined) {
