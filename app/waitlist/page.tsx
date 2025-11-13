@@ -109,41 +109,38 @@ export default function WaitlistPage() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <div className="max-w-2xl w-full">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
+          <div className="animate-fadeInUp">
             {/* Success Message */}
             <div className="text-center mb-8">
-              <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-20 h-20 bg-primary/10 border-2 border-primary/20 flex items-center justify-center mx-auto mb-6">
                 <Check className="w-10 h-10 text-primary" />
               </div>
-              <h1 className="text-4xl font-bold mb-2">You're on the list!</h1>
+              <h1 className="font-display text-5xl font-bold mb-3 letterpress">You're on the list!</h1>
               <p className="text-muted-foreground text-lg">
                 Thanks for joining the Kindred waitlist
               </p>
             </div>
 
             {/* Position Card */}
-            <Card className="p-8 mb-6 bg-gradient-to-br from-primary/10 to-purple-500/10 border-primary/20">
+            <div className="paper-card p-10 mb-6 corner-brackets">
               <div className="text-center">
-                <div className="text-6xl font-bold text-primary mb-2">
+                <div className="font-mono text-7xl font-bold text-primary mb-3 animate-countUp">
                   #{status.position}
                 </div>
-                <p className="text-muted-foreground">
+                <p className="font-mono text-sm uppercase tracking-wider text-muted-foreground">
                   Your position out of {status.totalWaitlist} people
                 </p>
               </div>
-            </Card>
+            </div>
 
             {/* Referral Section */}
-            <Card className="p-6 mb-6">
+            <div className="paper-card p-6 mb-6">
               <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <div className="flex-shrink-0 w-12 h-12 bg-primary/10 border border-primary/20 flex items-center justify-center">
                   <Gift className="w-6 h-6 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold mb-2">
+                  <h3 className="font-display text-2xl font-bold mb-2">
                     Skip the line - Invite friends!
                   </h3>
                   <p className="text-sm text-muted-foreground mb-4">
@@ -155,14 +152,14 @@ export default function WaitlistPage() {
                   <div className="space-y-3">
                     {/* Referral Code */}
                     <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">
+                      <label className="font-mono text-xs uppercase tracking-wider text-muted-foreground mb-2 block">
                         Your Referral Code
                       </label>
                       <div className="flex gap-2">
                         <Input
                           value={status.referralCode}
                           readOnly
-                          className="font-mono font-bold text-lg"
+                          className="font-mono font-bold text-lg bg-muted/50 border-2"
                         />
                         <Button
                           variant="outline"
@@ -180,55 +177,55 @@ export default function WaitlistPage() {
 
                     {/* Referral Link */}
                     <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">
+                      <label className="font-mono text-xs uppercase tracking-wider text-muted-foreground mb-2 block">
                         Your Referral Link
                       </label>
                       <Input
                         value={`${window.location.origin}/waitlist?ref=${status.referralCode}`}
                         readOnly
-                        className="font-mono text-sm"
+                        className="font-mono text-sm bg-muted/50 border-2"
                       />
                     </div>
                   </div>
                 </div>
               </div>
-            </Card>
+            </div>
 
             {/* Referral Stats */}
             <div className="grid grid-cols-2 gap-4 mb-6">
-              <Card className="p-4">
+              <div className="paper-card p-5 card-tactile">
                 <div className="flex items-center gap-3">
                   <Users className="w-8 h-8 text-primary" />
                   <div>
-                    <div className="text-2xl font-bold">
+                    <div className="font-mono text-3xl font-bold">
                       {status.referralCount}
                     </div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
                       Friends invited
                     </div>
                   </div>
                 </div>
-              </Card>
+              </div>
 
-              <Card className="p-4">
+              <div className="paper-card p-5 card-tactile">
                 <div className="flex items-center gap-3">
-                  <TrendingUp className="w-8 h-8 text-green-500" />
+                  <TrendingUp className="w-8 h-8 text-secondary" />
                   <div>
-                    <div className="text-2xl font-bold text-green-500">
+                    <div className="font-mono text-3xl font-bold text-secondary">
                       {status.referralCount * 5}
                     </div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
                       Spots jumped
                     </div>
                   </div>
                 </div>
-              </Card>
+              </div>
             </div>
 
             {/* Referrals List */}
             {status.referrals.length > 0 && (
-              <Card className="p-6 mb-6">
-                <h3 className="font-semibold mb-4">Your Referrals</h3>
+              <div className="paper-card p-6 mb-6">
+                <h3 className="font-display text-xl font-bold mb-4">Your Referrals</h3>
                 <div className="space-y-2">
                   {status.referrals.map((referral, index) => (
                     <div
@@ -251,43 +248,43 @@ export default function WaitlistPage() {
                     </div>
                   ))}
                 </div>
-              </Card>
+              </div>
             )}
 
             {/* What's Next */}
-            <Card className="p-6">
-              <h3 className="font-semibold mb-2">What happens next?</h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex items-start gap-2">
-                  <Zap className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+            <div className="paper-card p-6">
+              <h3 className="font-display text-xl font-bold mb-4">What happens next?</h3>
+              <ul className="space-y-3 text-sm text-muted-foreground leading-relaxed">
+                <li className="flex items-start gap-3">
+                  <Zap className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
                   <span>
                     We'll send invites every Friday to the top 50 people
                   </span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <Crown className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                <li className="flex items-start gap-3">
+                  <Crown className="w-5 h-5 text-secondary mt-0.5 flex-shrink-0" />
                   <span>
                     The more friends you invite, the faster you'll get access
                   </span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <Sparkles className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                <li className="flex items-start gap-3">
+                  <Sparkles className="w-5 h-5 text-accent mt-0.5 flex-shrink-0" />
                   <span>
                     We'll email you when you're selected for early access
                   </span>
                 </li>
               </ul>
-            </Card>
+            </div>
 
             <div className="text-center mt-8">
               <Link
                 href="/"
-                className="text-sm text-primary hover:underline"
+                className="font-mono text-sm text-primary hover:text-primary/80 transition-colors"
               >
                 ← Back to home
               </Link>
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
     );
@@ -296,66 +293,53 @@ export default function WaitlistPage() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <div className="max-w-4xl w-full">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
-        >
-          <div className="inline-block px-4 py-2 bg-primary/10 text-primary rounded-full text-sm font-medium mb-6">
-            🎉 Limited Beta Access
+        <div className="text-center mb-12 animate-fadeInUp">
+          <div className="inline-block stamp bg-primary text-primary-foreground mb-8">
+            Limited Beta Access
           </div>
-          <h1 className="text-5xl md:text-6xl font-bold mb-4">
+          <h1 className="font-display text-5xl md:text-7xl font-bold mb-6 letterpress">
             Join the Kindred Waitlist
           </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
             Connect with people through your shared media taste. Be among the
             first to discover your kindred spirits.
           </p>
-        </motion.div>
+        </div>
 
         {/* Social Proof */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="flex items-center justify-center gap-8 mb-12"
-        >
+        <div className="flex items-center justify-center gap-12 mb-12 animate-fadeInUp animate-delay-100">
           <div className="text-center">
-            <div className="text-3xl font-bold text-primary">1,247</div>
-            <div className="text-sm text-muted-foreground">People waiting</div>
+            <div className="font-mono text-4xl font-bold text-primary mb-1">1,247</div>
+            <div className="font-mono text-xs uppercase tracking-wider text-muted-foreground">People waiting</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-primary">50</div>
-            <div className="text-sm text-muted-foreground">
+            <div className="font-mono text-4xl font-bold text-secondary mb-1">50</div>
+            <div className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
               Invites per week
             </div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-primary">4.2</div>
-            <div className="text-sm text-muted-foreground">
+            <div className="font-mono text-4xl font-bold text-accent mb-1">4.2</div>
+            <div className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
               Avg. referrals/user
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Signup Form */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <Card className="p-8 max-w-md mx-auto">
+        <div className="animate-fadeInUp animate-delay-200">
+          <div className="paper-card p-8 max-w-md mx-auto corner-brackets">
             {referralCode && (
-              <div className="mb-6 p-4 bg-primary/10 rounded-lg border border-primary/20">
-                <p className="text-sm text-primary font-medium">
-                  🎁 You've been invited! Using code: {referralCode}
+              <div className="mb-6 p-4 bg-primary/10 border-2 border-primary/20">
+                <p className="font-mono text-sm text-primary font-medium">
+                  🎁 You've been invited! Using code: <span className="font-bold">{referralCode}</span>
                 </p>
               </div>
             )}
 
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium mb-2 block">
+                <label className="font-mono text-xs uppercase tracking-wider font-medium mb-2 block">
                   Email *
                 </label>
                 <Input
@@ -368,7 +352,7 @@ export default function WaitlistPage() {
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-2 block">
+                <label className="font-mono text-xs uppercase tracking-wider font-medium mb-2 block">
                   Name (optional)
                 </label>
                 <Input
@@ -377,69 +361,64 @@ export default function WaitlistPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleJoin()}
+                  className="border-2"
                 />
               </div>
 
-              <Button
+              <button
                 onClick={handleJoin}
                 disabled={loading || !email}
-                className="w-full"
-                size="lg"
+                className="w-full stamp bg-primary text-primary-foreground text-base hover:bg-primary/90 transition-all hover:-translate-y-1 disabled:opacity-50 disabled:hover:translate-y-0"
               >
                 {loading ? "Joining..." : "Join Waitlist"}
-              </Button>
+              </button>
 
-              <p className="text-xs text-muted-foreground text-center">
+              <p className="font-mono text-xs text-muted-foreground text-center leading-relaxed">
                 By joining, you'll get early access and can skip the line by
                 inviting friends.
               </p>
             </div>
-          </Card>
-        </motion.div>
+          </div>
+        </div>
 
         {/* Features */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="grid md:grid-cols-3 gap-6 mt-12"
-        >
-          <Card className="p-6">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+        <div className="grid md:grid-cols-3 gap-6 mt-12 animate-fadeInUp animate-delay-300">
+          <div className="paper-card card-tactile p-6">
+            <div className="w-12 h-12 bg-primary/10 border border-primary/20 flex items-center justify-center mb-4">
               <Sparkles className="w-6 h-6 text-primary" />
             </div>
-            <h3 className="font-semibold mb-2">Find Your Match</h3>
-            <p className="text-sm text-muted-foreground">
+            <h3 className="font-display text-lg font-bold mb-2">Find Your Match</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
               Discover people with similar taste across books, anime, movies,
               and music
             </p>
-          </Card>
+          </div>
 
-          <Card className="p-6">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-              <TrendingUp className="w-6 h-6 text-primary" />
+          <div className="paper-card card-tactile p-6">
+            <div className="w-12 h-12 bg-secondary/10 border border-secondary/20 flex items-center justify-center mb-4">
+              <TrendingUp className="w-6 h-6 text-secondary" />
             </div>
-            <h3 className="font-semibold mb-2">AI Recommendations</h3>
-            <p className="text-sm text-muted-foreground">
+            <h3 className="font-display text-lg font-bold mb-2">AI Recommendations</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
               Get personalized recommendations based on your compatibility with
               others
             </p>
-          </Card>
+          </div>
 
-          <Card className="p-6">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-              <Users className="w-6 h-6 text-primary" />
+          <div className="paper-card card-tactile p-6">
+            <div className="w-12 h-12 bg-accent/10 border border-accent/20 flex items-center justify-center mb-4">
+              <Users className="w-6 h-6 text-accent" />
             </div>
-            <h3 className="font-semibold mb-2">Skip the Line</h3>
-            <p className="text-sm text-muted-foreground">
+            <h3 className="font-display text-lg font-bold mb-2">Skip the Line</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
               Invite friends to jump ahead in the queue and get early access
               faster
             </p>
-          </Card>
-        </motion.div>
+          </div>
+        </div>
 
         <div className="text-center mt-12">
-          <Link href="/" className="text-sm text-muted-foreground hover:text-primary">
+          <Link href="/" className="font-mono text-sm text-muted-foreground hover:text-primary transition-colors">
             ← Back to home
           </Link>
         </div>

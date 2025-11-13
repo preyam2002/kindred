@@ -30,15 +30,10 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Navigation */}
-      <nav className="w-full border-b border-border/40">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+      <nav className="w-full border-b border-border">
+        <div className="container mx-auto px-6 py-5 flex items-center justify-between">
           <Link href="/">
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="flex items-center gap-3"
-            >
+            <div className="flex items-center gap-3 animate-fadeInUp">
               <Image
                 src="/logo.png"
                 alt="kindred"
@@ -46,126 +41,100 @@ export default function Home() {
                 height={32}
                 priority
               />
-              <span className="text-2xl font-bold">kindred</span>
-            </motion.div>
+              <span className="text-2xl font-display font-bold tracking-tight">kindred</span>
+            </div>
           </Link>
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="flex gap-4"
-          >
+          <div className="flex gap-3 animate-fadeInUp animate-delay-100">
             <Link
               href="/auth/login"
-              className="px-4 py-2 text-sm hover:text-primary transition-colors"
+              className="px-5 py-2 text-sm font-medium hover:text-primary transition-colors"
             >
               Log in
             </Link>
             <Link
               href="/auth/signup"
-              className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity"
+              className="stamp bg-primary text-primary-foreground hover:bg-primary/90 transition-all hover:-translate-y-0.5"
             >
               Sign up
             </Link>
-          </motion.div>
+          </div>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <main className="flex-1 flex items-center justify-center px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-6xl md:text-7xl font-bold mb-6 leading-tight"
-          >
-            Connect through
-            <br />
-            <span className="text-primary">what you love</span>
-          </motion.h1>
+      <main className="flex-1 flex items-center justify-center px-6 py-20">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-16">
+            <h1 className="text-6xl md:text-8xl font-display font-bold mb-8 leading-[0.95] letterpress animate-fadeInUp animate-delay-200">
+              Connect through
+              <br />
+              <span className="text-primary">what you love</span>
+            </h1>
 
-          <motion.p
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto"
-          >
-            Aggregate your tracked activity from Goodreads, MyAnimeList,
-            Letterboxd, and Spotify. Discover people who share your tastes.
-          </motion.p>
+            <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-3xl mx-auto leading-relaxed animate-fadeInUp animate-delay-300">
+              Aggregate your tracked activity from Goodreads, MyAnimeList,
+              Letterboxd, and Spotify. Discover people who share your tastes.
+            </p>
 
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.6 }}
-            className="flex flex-col sm:flex-row gap-4 justify-center items-center"
-          >
-            <Link
-              href="/auth/signup"
-              className="group px-8 py-4 bg-primary text-primary-foreground rounded-md font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
-            >
-              Get Started
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </Link>
-            <Link
-              href="/about"
-              className="px-8 py-4 border border-border rounded-md font-medium hover:bg-accent transition-colors"
-            >
-              Learn More
-            </Link>
-          </motion.div>
+            <div className="flex flex-col sm:flex-row gap-6 justify-center items-center animate-fadeInUp animate-delay-400">
+              <Link
+                href="/demo"
+                className="group stamp bg-primary text-primary-foreground text-base hover:bg-primary/90 transition-all hover:-translate-y-1 hover:shadow-lg"
+              >
+                Try Demo
+                <ArrowRight className="inline-block w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+              </Link>
+              <Link
+                href="/waitlist"
+                className="stamp border-2 border-secondary text-secondary hover:bg-secondary/10 transition-all hover:-translate-y-1"
+              >
+                Join Waitlist
+              </Link>
+            </div>
+          </div>
 
-          {/* Animated Platform Icons */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.8 }}
-            className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-8 max-w-3xl mx-auto"
-          >
+          {/* Platform Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto corner-brackets animate-fadeInUp animate-delay-500">
             {["Goodreads", "MyAnimeList", "Letterboxd", "Spotify"].map(
               (platform, index) => (
-                <motion.div
+                <div
                   key={platform}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{
-                    duration: 0.4,
-                    delay: 1 + index * 0.1,
-                  }}
-                  whileHover={{ scale: 1.05 }}
-                  className="p-6 border border-border rounded-lg bg-card hover:border-primary/50 transition-colors"
+                  className={`paper-card card-tactile p-8 text-center animate-fadeInUp animate-delay-${600 + index * 100}`}
                 >
-                  <div className="text-sm font-medium">{platform}</div>
-                </motion.div>
+                  <div className="font-mono text-sm font-medium tracking-wider uppercase text-primary">
+                    {platform}
+                  </div>
+                </div>
               )
             )}
-          </motion.div>
+          </div>
+
+          {/* Value Props */}
+          <div className="mt-24 grid md:grid-cols-3 gap-8 max-w-4xl mx-auto animate-fadeInUp animate-delay-800">
+            <div className="text-center space-y-3">
+              <div className="font-display text-4xl text-primary">∞</div>
+              <h3 className="font-display text-xl font-semibold">Endless Discovery</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Find kindred spirits across your favorite media
+              </p>
+            </div>
+            <div className="text-center space-y-3">
+              <div className="font-display text-4xl text-secondary">⚡</div>
+              <h3 className="font-display text-xl font-semibold">AI-Powered Matches</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Smart compatibility scoring based on taste overlap
+              </p>
+            </div>
+            <div className="text-center space-y-3">
+              <div className="font-display text-4xl text-accent">✦</div>
+              <h3 className="font-display text-xl font-semibold">Import Everything</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Sync your libraries from all your favorite platforms
+              </p>
+            </div>
+          </div>
         </div>
       </main>
-
-      {/* Floating Elements Animation */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        {[...Array(6)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-1 h-1 rounded-full bg-primary/20"
-            initial={{
-              x: Math.random() * 1200,
-              y: 800,
-            }}
-            animate={{
-              y: -100,
-              x: Math.random() * 1200,
-            }}
-            transition={{
-              duration: Math.random() * 10 + 10,
-              repeat: Infinity,
-              delay: Math.random() * 5,
-            }}
-          />
-        ))}
-      </div>
     </div>
   );
 }

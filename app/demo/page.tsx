@@ -82,23 +82,23 @@ export default function DemoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-purple-500/5 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       {/* Header */}
       <div className="w-full max-w-md mb-8">
         <div className="flex items-center justify-between mb-4">
           <Link
             href="/"
-            className="text-sm text-muted-foreground hover:text-primary"
+            className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
           >
             ← Back
           </Link>
-          <div className="text-sm font-medium">
+          <div className="font-mono text-sm font-medium">
             {currentIndex + 1} / {media.length}
           </div>
         </div>
 
         {/* Progress Bar */}
-        <div className="h-2 bg-muted rounded-full overflow-hidden">
+        <div className="h-3 bg-muted border border-border overflow-hidden">
           <motion.div
             className="h-full bg-primary"
             initial={{ width: 0 }}
@@ -120,66 +120,58 @@ export default function DemoPage() {
       </div>
 
       {/* Action Buttons */}
-      <div className="flex items-center gap-4 mb-8">
-        <Button
-          variant="outline"
-          size="icon-lg"
+      <div className="flex items-center gap-5 mb-10">
+        <button
           onClick={handleBack}
           disabled={currentIndex === 0}
-          className="rounded-full w-14 h-14"
+          className="w-12 h-12 paper-card flex items-center justify-center transition-all hover:-translate-y-1 disabled:opacity-30 disabled:hover:translate-y-0"
         >
-          <ArrowLeft className="w-6 h-6" />
-        </Button>
+          <ArrowLeft className="w-5 h-5" />
+        </button>
 
-        <Button
-          variant="outline"
-          size="icon-lg"
+        <button
           onClick={() => handleRate(3)}
-          className="rounded-full w-16 h-16 border-2 border-red-500/20 hover:bg-red-500/10 hover:border-red-500"
+          className="w-20 h-20 paper-card card-tactile flex items-center justify-center border-2 border-accent/30 hover:border-accent transition-all hover:scale-105"
         >
-          <X className="w-8 h-8 text-red-500" />
-        </Button>
+          <X className="w-10 h-10 text-accent" />
+        </button>
 
-        <Button
-          variant="outline"
-          size="icon-lg"
+        <button
           onClick={() => handleRate(7)}
-          className="rounded-full w-16 h-16 border-2 border-yellow-500/20 hover:bg-yellow-500/10 hover:border-yellow-500"
+          className="w-20 h-20 paper-card card-tactile flex items-center justify-center border-2 border-secondary/30 hover:border-secondary transition-all hover:scale-105"
         >
-          <Star className="w-8 h-8 text-yellow-500" />
-        </Button>
+          <Star className="w-10 h-10 text-secondary" />
+        </button>
 
-        <Button
-          variant="outline"
-          size="icon-lg"
+        <button
           onClick={() => handleRate(10)}
-          className="rounded-full w-16 h-16 border-2 border-green-500/20 hover:bg-green-500/10 hover:border-green-500"
+          className="w-20 h-20 paper-card card-tactile flex items-center justify-center border-2 border-primary/30 hover:border-primary transition-all hover:scale-105"
         >
-          <Heart className="w-8 h-8 text-green-500" />
-        </Button>
+          <Heart className="w-10 h-10 text-primary" />
+        </button>
 
-        <Button
-          variant="outline"
-          size="icon-lg"
+        <button
           onClick={handleSkip}
-          className="rounded-full w-14 h-14"
+          className="w-12 h-12 paper-card flex items-center justify-center transition-all hover:-translate-y-1"
         >
-          <SkipForward className="w-6 h-6" />
-        </Button>
+          <SkipForward className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Instructions */}
-      <div className="text-center text-sm text-muted-foreground max-w-md">
-        <p className="mb-2">Rate items to discover your taste profile</p>
-        <div className="flex items-center justify-center gap-4 text-xs">
-          <span className="flex items-center gap-1">
-            <X className="w-3 h-3 text-red-500" /> Not for me
+      <div className="text-center max-w-md">
+        <p className="font-mono text-sm text-muted-foreground mb-3 tracking-wide">
+          Rate items to discover your taste profile
+        </p>
+        <div className="flex items-center justify-center gap-6 text-xs font-medium">
+          <span className="flex items-center gap-2">
+            <X className="w-3 h-3 text-accent" /> Not for me
           </span>
-          <span className="flex items-center gap-1">
-            <Star className="w-3 h-3 text-yellow-500" /> It's okay
+          <span className="flex items-center gap-2">
+            <Star className="w-3 h-3 text-secondary" /> It's okay
           </span>
-          <span className="flex items-center gap-1">
-            <Heart className="w-3 h-3 text-green-500" /> Love it!
+          <span className="flex items-center gap-2">
+            <Heart className="w-3 h-3 text-primary" /> Love it!
           </span>
         </div>
       </div>
@@ -225,9 +217,9 @@ function SwipeCard({
       onDragEnd={handleDragEnd}
       whileTap={{ scale: 0.95 }}
     >
-      <Card className="w-full h-full overflow-hidden bg-card border-2">
+      <div className="w-full h-full overflow-hidden paper-card border-2">
         {/* Image */}
-        <div className="relative h-96 bg-muted">
+        <div className="relative h-96 bg-muted/50">
           <img
             src={item.imageUrl}
             alt={item.title}
@@ -255,16 +247,16 @@ function SwipeCard({
           )}
 
           {/* Type Badge */}
-          <div className="absolute top-4 left-4 px-3 py-1 bg-primary/90 backdrop-blur-sm rounded-full text-xs font-medium text-primary-foreground">
-            {item.type.toUpperCase()}
+          <div className="absolute top-4 left-4 stamp bg-primary text-primary-foreground text-xs">
+            {item.type}
           </div>
         </div>
 
         {/* Details */}
         <div className="p-6">
-          <h2 className="text-2xl font-bold mb-2">{item.title}</h2>
+          <h2 className="font-display text-2xl font-bold mb-2 letterpress">{item.title}</h2>
 
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+          <div className="flex items-center gap-2 font-mono text-sm text-muted-foreground mb-4">
             {item.year && <span>{item.year}</span>}
             {item.artist && (
               <>
@@ -289,7 +281,7 @@ function SwipeCard({
               {item.genres.map((genre) => (
                 <span
                   key={genre}
-                  className="px-2 py-1 bg-muted rounded-md text-xs"
+                  className="px-3 py-1 bg-muted border border-border text-xs font-mono font-medium"
                 >
                   {genre}
                 </span>
@@ -297,7 +289,7 @@ function SwipeCard({
             </div>
           )}
         </div>
-      </Card>
+      </div>
     </motion.div>
   );
 }
@@ -332,122 +324,102 @@ function ResultsView({
     <div className="min-h-screen bg-background p-6">
       <div className="container mx-auto max-w-4xl">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
-        >
-          <div className="inline-block p-4 bg-primary/10 rounded-full mb-4">
+        <div className="text-center mb-12 animate-fadeInUp">
+          <div className="inline-block p-4 bg-primary/10 border-2 border-primary/20 mb-6">
             <Sparkles className="w-12 h-12 text-primary" />
           </div>
-          <h1 className="text-4xl font-bold mb-4">Your Taste Profile</h1>
-          <p className="text-xl text-muted-foreground">
+          <h1 className="font-display text-5xl font-bold mb-4 letterpress">Your Taste Profile</h1>
+          <p className="font-mono text-xl text-muted-foreground">
             Based on your {ratedItems.length} ratings
           </p>
-        </motion.div>
+        </div>
 
         {/* Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="grid grid-cols-3 gap-4 mb-12"
-        >
-          <Card className="p-6 text-center">
-            <div className="text-3xl font-bold text-green-500 mb-2">
+        <div className="grid grid-cols-3 gap-6 mb-12 animate-fadeInUp animate-delay-100">
+          <div className="paper-card p-8 text-center card-tactile">
+            <div className="font-mono text-4xl font-bold text-primary mb-2 animate-countUp">
               {loved.length}
             </div>
-            <div className="text-sm text-muted-foreground">Loved</div>
-          </Card>
-          <Card className="p-6 text-center">
-            <div className="text-3xl font-bold text-yellow-500 mb-2">
+            <div className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Loved</div>
+          </div>
+          <div className="paper-card p-8 text-center card-tactile">
+            <div className="font-mono text-4xl font-bold text-secondary mb-2 animate-countUp animate-delay-100">
               {liked.length}
             </div>
-            <div className="text-sm text-muted-foreground">Liked</div>
-          </Card>
-          <Card className="p-6 text-center">
-            <div className="text-3xl font-bold text-red-500 mb-2">
+            <div className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Liked</div>
+          </div>
+          <div className="paper-card p-8 text-center card-tactile">
+            <div className="font-mono text-4xl font-bold text-accent mb-2 animate-countUp animate-delay-200">
               {disliked.length}
             </div>
-            <div className="text-sm text-muted-foreground">Not for you</div>
-          </Card>
-        </motion.div>
+            <div className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Not for you</div>
+          </div>
+        </div>
 
         {/* Taste Insights */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="mb-12"
-        >
-          <Card className="p-8 bg-gradient-to-br from-primary/10 to-purple-500/10">
-            <h2 className="text-2xl font-bold mb-4">Your Taste Insights</h2>
-            <div className="space-y-3 text-muted-foreground">
-              <p>
-                ✨ You rated {ratedItems.length} items across{" "}
-                {Object.keys(typeBreakdown).length} categories
+        <div className="mb-12 animate-fadeInUp animate-delay-200">
+          <div className="paper-card p-8 corner-brackets">
+            <h2 className="font-display text-3xl font-bold mb-6 letterpress">Your Taste Insights</h2>
+            <div className="space-y-4 text-base leading-relaxed text-muted-foreground">
+              <p className="flex items-start gap-3">
+                <span className="text-primary text-xl">✦</span>
+                <span>You rated <span className="font-mono font-semibold text-foreground">{ratedItems.length}</span> items across{" "}
+                <span className="font-mono font-semibold text-foreground">{Object.keys(typeBreakdown).length}</span> categories</span>
               </p>
               {favoriteType && (
-                <p>
-                  🎯 Your favorite category is{" "}
-                  <span className="font-semibold text-foreground">
+                <p className="flex items-start gap-3">
+                  <span className="text-secondary text-xl">∞</span>
+                  <span>Your favorite category is{" "}
+                  <span className="font-display font-semibold text-foreground">
                     {favoriteType[0]}
                   </span>{" "}
-                  ({favoriteType[1]} items)
+                  (<span className="font-mono">{favoriteType[1]}</span> items)</span>
                 </p>
               )}
-              <p>
-                💚 You loved {((loved.length / ratedItems.length) * 100).toFixed(0)}% of
-                what you rated
+              <p className="flex items-start gap-3">
+                <span className="text-accent text-xl">⚡</span>
+                <span>You loved <span className="font-mono font-semibold text-foreground">{((loved.length / ratedItems.length) * 100).toFixed(0)}%</span> of
+                what you rated</span>
               </p>
             </div>
-          </Card>
-        </motion.div>
+          </div>
+        </div>
 
         {/* CTA */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="text-center"
-        >
-          <Card className="p-12 bg-gradient-to-br from-primary/5 to-purple-500/5">
-            <h2 className="text-3xl font-bold mb-4">
+        <div className="text-center animate-fadeInUp animate-delay-300">
+          <div className="paper-card p-12 rule-double">
+            <h2 className="font-display text-4xl font-bold mb-6 letterpress">
               Ready to find your kindred spirits?
             </h2>
-            <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+            <p className="text-lg text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
               Sign up to discover users with your exact taste, get personalized
               recommendations, and connect through what you love
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-6 justify-center mb-8">
               <Link href="/auth/signup">
-                <Button size="lg" className="text-lg px-8 py-6">
+                <button className="stamp bg-primary text-primary-foreground text-lg hover:bg-primary/90 transition-all hover:-translate-y-1 hover:shadow-lg">
                   Sign Up - It's Free
-                </Button>
+                </button>
               </Link>
               <Link href="/waitlist">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="text-lg px-8 py-6"
-                >
+                <button className="stamp border-2 border-secondary text-secondary hover:bg-secondary/10 text-lg transition-all hover:-translate-y-1">
                   Join Waitlist
-                </Button>
+                </button>
               </Link>
             </div>
 
-            <p className="text-sm text-muted-foreground mt-6">
-              Import your full library from Goodreads, MAL, Letterboxd & Spotify
+            <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider">
+              Import from Goodreads · MAL · Letterboxd · Spotify
             </p>
-          </Card>
-        </motion.div>
+          </div>
+        </div>
 
         {/* Try Again */}
         <div className="text-center mt-8">
           <Link
             href="/demo"
-            className="text-sm text-muted-foreground hover:text-primary"
+            className="font-mono text-sm text-muted-foreground hover:text-primary transition-colors"
           >
             Try again with different items →
           </Link>
