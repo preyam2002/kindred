@@ -63,3 +63,5 @@ If you prefer more control:
 
 **Tables not appearing**: Make sure you're looking at the correct Supabase project!
 
+
+

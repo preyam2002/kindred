@@ -1,6 +1,7 @@
 // Matching engine for calculating similarity scores between users
 
 import { supabase } from "./db/supabase";
+import { fetchMediaItemsForUserMedia } from "./db/media-helpers";
 import type { Match, UserMedia, MediaItem } from "@/types/database";
 
 export interface MashScoreResult {
@@ -31,39 +32,48 @@ export async function calculateMashScore(
   // Fetch all media for both users
   const { data: user1Media, error: error1 } = await supabase
     .from("user_media")
-    .select("*, media_items(*)")
+    .select("*")
     .eq("user_id", user1Id);
 
   const { data: user2Media, error: error2 } = await supabase
     .from("user_media")
-    .select("*, media_items(*)")
+    .select("*")
     .eq("user_id", user2Id);
 
   if (error1 || error2 || !user1Media || !user2Media) {
     throw new Error("Failed to fetch user media");
   }
 
-  // Create maps for quick lookup
+  // Fetch media items for both users
+  const [user1MediaMap, user2MediaMap] = await Promise.all([
+    fetchMediaItemsForUserMedia(user1Media),
+    fetchMediaItemsForUserMedia(user2Media),
+  ]);
+
+  // Create maps using media_type + media_id as key for polymorphic matching
   const user1Map = new Map(
-    user1Media.map((um) => [
-      um.media_item_id,
-      { rating: um.rating, media: um.media_items },
-    ])
-  );
-  const user2Map = new Map(
-    user2Media.map((um) => [
-      um.media_item_id,
-      { rating: um.rating, media: um.media_items },
-    ])
+    user1Media.map((um) => {
+      const key = `${um.media_type}:${um.media_id}`;
+      const media = user1MediaMap.get(um.media_id);
+      return [key, { rating: um.rating, media, mediaType: um.media_type, mediaId: um.media_id }];
+    })
   );
 
-  // Find shared items
+  const user2Map = new Map(
+    user2Media.map((um) => {
+      const key = `${um.media_type}:${um.media_id}`;
+      const media = user2MediaMap.get(um.media_id);
+      return [key, { rating: um.rating, media, mediaType: um.media_type, mediaId: um.media_id }];
+    })
+  );
+
+  // Find shared items (same media_type + media_id)
   const sharedItems: MashScoreResult["sharedItems"] = [];
   let ratingSum = 0;
   let ratingCount = 0;
 
-  user1Map.forEach((user1Data, mediaId) => {
-    const user2Data = user2Map.get(mediaId);
+  user1Map.forEach((user1Data, key) => {
+    const user2Data = user2Map.get(key);
     if (user2Data && user1Data.media) {
       sharedItems.push({
         media: user1Data.media as MediaItem,
@@ -82,7 +92,7 @@ export async function calculateMashScore(
 
   // Calculate overlap percentage
   const totalUnique = new Set([...user1Map.keys(), ...user2Map.keys()]).size;
-  const overlapPercentage = (sharedItems.length / totalUnique) * 100;
+  const overlapPercentage = totalUnique > 0 ? (sharedItems.length / totalUnique) * 100 : 0;
 
   // Calculate rating correlation score
   const ratingScore = ratingCount > 0 ? (ratingSum / ratingCount / 10) * 100 : 0;
@@ -90,10 +100,12 @@ export async function calculateMashScore(
   // Genre similarity (simplified - count shared genres)
   const user1Genres = new Set(
     Array.from(user1Map.values())
+      .filter((d) => d.media)
       .flatMap((d) => (d.media as MediaItem)?.genre || [])
   );
   const user2Genres = new Set(
     Array.from(user2Map.values())
+      .filter((d) => d.media)
       .flatMap((d) => (d.media as MediaItem)?.genre || [])
   );
   const sharedGenres = new Set(
@@ -112,8 +124,8 @@ export async function calculateMashScore(
 
   // Generate recommendations (items user2 has that user1 doesn't)
   const recommendations: MashScoreResult["recommendations"] = [];
-  user2Map.forEach((user2Data, mediaId) => {
-    if (!user1Map.has(mediaId) && user2Data.media) {
+  user2Map.forEach((user2Data, key) => {
+    if (!user1Map.has(key) && user2Data.media) {
       const media = user2Data.media as MediaItem;
       const rating = user2Data.rating || 0;
       if (rating >= 7) {
@@ -142,13 +154,12 @@ export async function getOrCreateMatch(
   user2Id: string,
   forceRecalculate: boolean = false
 ): Promise<Match> {
-  // Check if match exists
+  // Check if match exists - match where user1Id is either user1 or user2, and user2Id is the other
   const { data: existingMatch } = await supabase
     .from("matches")
     .select("*")
-    .or(`user1_id.eq.${user1Id},user1_id.eq.${user2Id}`)
-    .or(`user2_id.eq.${user1Id},user2_id.eq.${user2Id}`)
-    .single();
+    .or(`and(user1_id.eq.${user1Id},user2_id.eq.${user2Id}),and(user1_id.eq.${user2Id},user2_id.eq.${user1Id})`)
+    .maybeSingle();
 
   // If match exists and not forcing recalculation, check if cache is still valid
   if (existingMatch && !forceRecalculate) {

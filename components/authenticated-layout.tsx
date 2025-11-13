@@ -26,3 +26,5 @@ export function AuthenticatedLayout({ children }: { children: ReactNode }) {
   );
 }
 
+
+

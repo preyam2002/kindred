@@ -228,3 +228,5 @@ function generateFallbackHighlights(mashResult: MashScoreResult): string[] {
   return generateFallbackInsights(mashResult).highlights;
 }
 
+
+

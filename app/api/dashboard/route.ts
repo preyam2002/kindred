@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 import { calculateMashScore } from "@/lib/matching";
+import { fetchMediaItemsForUserMedia } from "@/lib/db/media-helpers";
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
     // Get user's media stats
     const { data: userMedia, error: mediaError } = await supabase
       .from("user_media")
-      .select("media_items(*)")
+      .select("media_type")
       .eq("user_id", userId);
 
     if (mediaError) {
@@ -25,11 +26,11 @@ export async function GET(request: NextRequest) {
 
     const mediaCounts = {
       total: userMedia?.length || 0,
-      books: userMedia?.filter((m: any) => m.media_items?.type === "book").length || 0,
-      anime: userMedia?.filter((m: any) => m.media_items?.type === "anime").length || 0,
-      manga: userMedia?.filter((m: any) => m.media_items?.type === "manga").length || 0,
-      movies: userMedia?.filter((m: any) => m.media_items?.type === "movie").length || 0,
-      music: userMedia?.filter((m: any) => m.media_items?.type === "music").length || 0,
+      books: userMedia?.filter((m: any) => m.media_type === "book").length || 0,
+      anime: userMedia?.filter((m: any) => m.media_type === "anime").length || 0,
+      manga: userMedia?.filter((m: any) => m.media_type === "manga").length || 0,
+      movies: userMedia?.filter((m: any) => m.media_type === "movie").length || 0,
+      music: userMedia?.filter((m: any) => m.media_type === "music").length || 0,
     };
 
     // Get connected integrations
@@ -112,17 +113,22 @@ export async function GET(request: NextRequest) {
     }
 
     // Get recent activity (recently added media)
-    const { data: recentActivity, error: activityError } = await supabase
+    const { data: recentActivityRaw, error: activityError } = await supabase
       .from("user_media")
-      .select(
-        `
-        *,
-        media_items(*)
-      `
-      )
+      .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(10);
+
+    // Enrich with media items
+    let recentActivity: any[] = [];
+    if (recentActivityRaw && recentActivityRaw.length > 0) {
+      const mediaMap = await fetchMediaItemsForUserMedia(recentActivityRaw);
+      recentActivity = recentActivityRaw.map((um: any) => ({
+        ...um,
+        media_items: mediaMap.get(um.media_id) || null,
+      }));
+    }
 
     if (activityError) {
       console.error("Error fetching activity:", activityError);

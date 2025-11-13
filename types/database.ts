@@ -118,3 +118,8 @@ export interface Recommendation {
   created_at: Date;
 }
 
+// Unified media item type for polymorphic relationships
+export type MediaItem = (Book | Anime | Manga | Movie | Music) & {
+  type: "book" | "anime" | "manga" | "movie" | "music";
+};
+

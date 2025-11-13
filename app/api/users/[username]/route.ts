@@ -31,21 +31,107 @@ export async function GET(
       return data;
     });
 
-    // Fetch user media
+    // Fetch user media with polymorphic joins
     const { data: userMedia, error: mediaError } = await supabase
       .from("user_media")
-      .select("*, media_items(*)")
+      .select("*")
       .eq("user_id", user.id)
       .order("timestamp", { ascending: false });
 
     if (mediaError) {
       console.error("Error fetching user media:", mediaError);
-      // Don't fail the whole request if media fetch fails
+      return NextResponse.json({
+        user,
+        media: [],
+      });
+    }
+
+    // Fetch media items from their respective tables based on media_type
+    const enrichedMedia = [];
+    if (userMedia && userMedia.length > 0) {
+      // Group by media_type for efficient querying
+      const mediaByType = {
+        book: [] as string[],
+        anime: [] as string[],
+        manga: [] as string[],
+        movie: [] as string[],
+        music: [] as string[],
+      };
+
+      userMedia.forEach((um: any) => {
+        if (um.media_type && um.media_id) {
+          mediaByType[um.media_type as keyof typeof mediaByType]?.push(um.media_id);
+        }
+      });
+
+      // Fetch from each table
+      const [books, anime, manga, movies, music] = await Promise.all([
+        mediaByType.book.length > 0
+          ? supabase.from("books").select("*").in("id", mediaByType.book)
+          : { data: [], error: null },
+        mediaByType.anime.length > 0
+          ? supabase.from("anime").select("*").in("id", mediaByType.anime)
+          : { data: [], error: null },
+        mediaByType.manga.length > 0
+          ? supabase.from("manga").select("*").in("id", mediaByType.manga)
+          : { data: [], error: null },
+        mediaByType.movie.length > 0
+          ? supabase.from("movies").select("*").in("id", mediaByType.movie)
+          : { data: [], error: null },
+        mediaByType.music.length > 0
+          ? supabase.from("music").select("*").in("id", mediaByType.music)
+          : { data: [], error: null },
+      ]);
+
+      // Create a map of media_id -> media_item for quick lookup
+      const mediaMap = new Map();
+
+      // Map books
+      if (books.data) {
+        books.data.forEach((item: any) => {
+          mediaMap.set(item.id, { ...item, type: "book" });
+        });
+      }
+      // Map anime
+      if (anime.data) {
+        anime.data.forEach((item: any) => {
+          mediaMap.set(item.id, { ...item, type: "anime" });
+        });
+      }
+      // Map manga
+      if (manga.data) {
+        manga.data.forEach((item: any) => {
+          mediaMap.set(item.id, { ...item, type: "manga" });
+        });
+      }
+      // Map movies
+      if (movies.data) {
+        movies.data.forEach((item: any) => {
+          mediaMap.set(item.id, { ...item, type: "movie" });
+        });
+      }
+      // Map music
+      if (music.data) {
+        music.data.forEach((item: any) => {
+          mediaMap.set(item.id, { ...item, type: "music" });
+        });
+      }
+
+      // Combine user_media with media items
+      enrichedMedia.push(
+        ...userMedia.map((um: any) => {
+          const mediaItem = mediaMap.get(um.media_id);
+          return {
+            ...um,
+            media_items: mediaItem || null,
+          };
+        })
+      );
     }
 
     return NextResponse.json({
       user,
-      media: userMedia || [],
+      media: enrichedMedia,
     });
   } catch (error) {
     console.error("Error fetching user profile:", error);

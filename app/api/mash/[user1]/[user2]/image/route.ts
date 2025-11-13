@@ -13,3 +13,5 @@ export async function GET(
   return NextResponse.redirect(`${baseUrl}/api/mash/${user1}/${user2}/og`);
 }
 
+
+

@@ -32,14 +32,16 @@ export default function MashPage() {
       try {
         const res = await fetch(`/api/matching/${user1Name}/${user2Name}`);
         const data = await res.json();
-        if (data.user1 && data.user2 && data.mashResult) {
+        if (res.ok && data.user1 && data.user2 && data.mashResult) {
           setUser1(data.user1);
           setUser2(data.user2);
           setMashResult(data.mashResult);
+        } else {
+          console.error("Error fetching mash:", data);
+          setLoading(false);
         }
       } catch (error) {
         console.error("Error fetching mash:", error);
-      } finally {
         setLoading(false);
       }
     }

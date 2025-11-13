@@ -224,3 +224,5 @@ WHERE r.recommended_item_id = mi.id AND mi.type = 'music';
 ALTER TABLE user_media DROP CONSTRAINT IF EXISTS user_media_user_id_media_item_id_key;
 CREATE UNIQUE INDEX IF NOT EXISTS user_media_user_type_id_unique ON user_media(user_id, media_type, media_id);
 
+
+
