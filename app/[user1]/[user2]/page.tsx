@@ -14,6 +14,8 @@ import {
   generateTwitterShareUrl,
   copyToClipboard,
 } from "@/lib/share";
+import { ShareButtons } from "@/components/share-buttons";
+import { Card } from "@/components/ui/card";
 
 export default function MashPage() {
   const params = useParams();
@@ -317,96 +319,43 @@ export default function MashPage() {
           transition={{ delay: 0.7 }}
           className="mt-12"
         >
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            {/* Share Link Button */}
-            <button
-              onClick={async () => {
-                const url = generateMashUrl(user1Name, user2Name);
-                const success = await copyToClipboard(url);
-                if (success) {
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                }
-              }}
-              className="flex items-center gap-2 px-6 py-3 bg-secondary text-secondary-foreground rounded-md hover:opacity-90 transition-opacity"
-            >
-              {copied ? (
-                <>
-                  <Check className="w-4 h-4" />
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <Link2 className="w-4 h-4" />
-                  Copy Link
-                </>
-              )}
-            </button>
+          <Card className="p-8 bg-gradient-to-br from-primary/5 to-purple-500/5">
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-bold mb-2 flex items-center justify-center gap-2">
+                <Share2 className="w-6 h-6 text-primary" />
+                Share Your Match
+              </h3>
+              <p className="text-muted-foreground">
+                Show off your {mashResult.score}% compatibility!
+              </p>
+            </div>
 
-            {/* Share Tweet with Text */}
-            <button
-              onClick={() => {
-                const tweetText = generateTweetText(
-                  user1Name,
-                  user2Name,
-                  mashResult.score,
-                  mashResult.sharedCount,
-                  typeof window !== 'undefined' ? window.location.origin : ''
-                );
-                const tweetUrl = generateTwitterShareUrl(
-                  tweetText,
-                  generateMashUrl(user1Name, user2Name)
-                );
-                window.open(tweetUrl, '_blank', 'noopener,noreferrer');
-              }}
-              className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity"
-            >
-              <Twitter className="w-4 h-4" />
-              Share on X
-            </button>
+            <div className="flex justify-center">
+              <ShareButtons
+                config={{
+                  type: "match",
+                  url: `${typeof window !== 'undefined' ? window.location.origin : ''}/${user1Name}/${user2Name}`,
+                  user1: user1Name,
+                  user2: user2Name,
+                  score: mashResult.score,
+                  sharedCount: mashResult.sharedCount,
+                }}
+                showLabels={true}
+              />
+            </div>
 
-            {/* Share Tweet with Image */}
-            <button
-              onClick={async () => {
-                const ogImageUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/api/mash/${user1Name}/${user2Name}/og`;
-                const mashUrl = generateMashUrl(user1Name, user2Name);
-                
-                // Create tweet with image URL
-                const tweetText = `Check out our ${mashResult.score}% compatibility on @kindred! 🎬📚\n\n${mashUrl}`;
-                const tweetUrl = generateTwitterShareUrl(tweetText, mashUrl);
-                
-                // Open tweet compose
-                window.open(tweetUrl, '_blank', 'noopener,noreferrer');
-                
-                // Also copy image URL to clipboard for easy attachment
-                await copyToClipboard(ogImageUrl);
-              }}
-              className="flex items-center gap-2 px-6 py-3 border-2 border-primary text-primary rounded-md hover:bg-primary/10 transition-colors"
-            >
-              <Share2 className="w-4 h-4" />
-              Share with Image
-            </button>
-
-            {/* Download Image */}
-            <button
-              onClick={() => {
-                const ogImageUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/api/mash/${user1Name}/${user2Name}/og`;
-                window.open(ogImageUrl, '_blank');
-              }}
-              className="flex items-center gap-2 px-6 py-3 border border-border rounded-md hover:bg-accent transition-colors"
-            >
-              <Copy className="w-4 h-4" />
-              View Image
-            </button>
-          </div>
-
-
-          {/* Start Conversation Button */}
-          <div className="mt-8 text-center">
-            <button className="px-8 py-4 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity text-lg font-medium">
-              Start a conversation
-            </button>
-          </div>
+            <div className="mt-6 text-center text-sm text-muted-foreground">
+              <p>OG image preview available at:</p>
+              <a
+                href={`/api/mash/${user1Name}/${user2Name}/og`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                /api/mash/{user1Name}/{user2Name}/og
+              </a>
+            </div>
+          </Card>
         </motion.div>
       </div>
     </div>

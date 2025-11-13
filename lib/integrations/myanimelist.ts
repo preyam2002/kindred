@@ -1,8 +1,11 @@
-// MyAnimeList API integration utilities using client_auth (API key)
+// MyAnimeList API integration utilities using client_auth (API key) and OAuth
 import { supabase } from "@/lib/db/supabase";
+import crypto from "crypto";
 
 const MAL_API_URL = "https://api.myanimelist.net/v2";
+const MAL_AUTH_URL = "https://myanimelist.net/v1/oauth2";
 const MAL_CLIENT_ID = process.env.MYANIMELIST_CLIENT_ID || "";
+const MAL_CLIENT_SECRET = process.env.MYANIMELIST_CLIENT_SECRET || "";
 
 /**
  * Get user's anime list using client_auth (API key)
@@ -65,23 +68,140 @@ export async function getMALMangaList(
 }
 
 /**
+ * Generate PKCE code challenge and verifier for OAuth
+ */
+export function generatePKCE(): { codeVerifier: string; codeChallenge: string } {
+  const codeVerifier = crypto.randomBytes(32).toString("base64url");
+  const codeChallenge = crypto
+    .createHash("sha256")
+    .update(codeVerifier)
+    .digest("base64url");
+  return { codeVerifier, codeChallenge };
+}
+
+/**
+ * Get MAL OAuth authorization URL
+ */
+export function getMALAuthUrl(state: string, codeChallenge: string, callbackUrl: string): string {
+  const params = new URLSearchParams({
+    response_type: "code",
+    client_id: MAL_CLIENT_ID,
+    state,
+    code_challenge: codeChallenge,
+    code_challenge_method: "S256",
+    redirect_uri: callbackUrl,
+  });
+  return `${MAL_AUTH_URL}/authorize?${params.toString()}`;
+}
+
+/**
+ * Exchange authorization code for access token
+ */
+export async function exchangeMALToken(
+  code: string,
+  codeVerifier: string,
+  callbackUrl: string
+): Promise<{
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  token_type: string;
+}> {
+  const response = await fetch(`${MAL_AUTH_URL}/token`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      client_id: MAL_CLIENT_ID,
+      client_secret: MAL_CLIENT_SECRET,
+      code,
+      code_verifier: codeVerifier,
+      grant_type: "authorization_code",
+      redirect_uri: callbackUrl,
+    }).toString(),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to exchange MAL token: ${error}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Refresh MAL access token
+ */
+export async function refreshMALToken(refreshToken: string): Promise<{
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  token_type: string;
+}> {
+  const response = await fetch(`${MAL_AUTH_URL}/token`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      client_id: MAL_CLIENT_ID,
+      client_secret: MAL_CLIENT_SECRET,
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+    }).toString(),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to refresh MAL token: ${error}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Get MAL user profile
+ */
+export async function getMALUserProfile(accessToken: string): Promise<{
+  id: number;
+  name: string;
+  picture?: string;
+}> {
+  const response = await fetch(`${MAL_API_URL}/users/@me`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch MAL user profile: ${response.statusText}`);
+  }
+
+  return await response.json();
+}
+
+/**
  * Sync user's anime and manga from MAL
  */
 export async function syncMALData(
   userId: string,
   accessToken: string
 ): Promise<{ animeImported: number; mangaImported: number; errors: number }> {
-  // Verify user exists before proceeding
-  const { data: user, error: userError } = await supabase
-    .from("users")
-    .select("id")
-    .eq("id", userId)
+  // Get user's MAL username from sources
+  const { data: malSource, error: sourceError } = await supabase
+    .from("sources")
+    .select("source_user_id")
+    .eq("user_id", userId)
+    .eq("source_name", "myanimelist")
     .single();
 
-  if (userError || !user) {
-    console.error(`User not found: ${userId}`, userError);
-    throw new Error(`User not found: ${userId}`);
+  if (sourceError || !malSource || !malSource.source_user_id) {
+    console.error(`MAL source not found for user: ${userId}`, sourceError);
+    throw new Error(`MAL source not found for user: ${userId}`);
   }
+
+  const malUsername = malSource.source_user_id;
 
   try {
     let animeImported = 0;

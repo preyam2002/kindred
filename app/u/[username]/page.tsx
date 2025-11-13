@@ -8,6 +8,7 @@ import { useSession } from "next-auth/react";
 import { BookOpen, Film, Music, Tv, Share2, Link2, Copy, Check } from "lucide-react";
 import type { User, UserMedia, MediaItem } from "@/types/database";
 import { generateTweetText, generateTwitterShareUrl, copyToClipboard } from "@/lib/share";
+import { ChallengeFriend } from "@/components/challenge-friend";
 
 export default function ProfilePage() {
   const params = useParams();
@@ -149,6 +150,18 @@ export default function ProfilePage() {
             </div>
           </div>
         </motion.div>
+
+        {/* Challenge Friend - only show if viewing own profile or if logged in */}
+        {session?.user?.username === username && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="mb-8"
+          >
+            <ChallengeFriend username={username} />
+          </motion.div>
+        )}
 
         {/* Filters */}
         <motion.div
