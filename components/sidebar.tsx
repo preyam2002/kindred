@@ -12,6 +12,7 @@ import {
   LogOut,
   Menu,
   X,
+  MessageCircle,
 } from "lucide-react";
 import { Logo } from "./logo";
 import { useState } from "react";
@@ -30,6 +31,11 @@ export function Sidebar({ className = "" }: SidebarProps) {
       name: "Dashboard",
       href: "/dashboard",
       icon: LayoutDashboard,
+    },
+    {
+      name: "AI Chat",
+      href: "/chat",
+      icon: MessageCircle,
     },
     {
       name: "Discover",
