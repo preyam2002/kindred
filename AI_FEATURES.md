@@ -446,3 +446,4 @@ CREATE TABLE ai_match_insights (
 The AI features should feel **magical but practical**—not "AI for AI's sake," but genuinely useful insights that make Kindred more valuable than competitors.
 
 
+
