@@ -25,6 +25,8 @@ import {
   Palette,
   Share2,
   RefreshCw,
+  Grid3x3,
+  ListChecks,
 } from "lucide-react";
 import { Logo } from "./logo";
 import { GlobalSearch } from "./global-search";
@@ -50,6 +52,16 @@ export function Sidebar({ className = "" }: SidebarProps) {
       name: "Library",
       href: "/library",
       icon: Library,
+    },
+    {
+      name: "Collections",
+      href: "/collections",
+      icon: Grid3x3,
+    },
+    {
+      name: "Queue",
+      href: "/queue",
+      icon: ListChecks,
     },
     {
       name: "Recommendations",

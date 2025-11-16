@@ -169,6 +169,61 @@ export interface Notification {
   actor_avatar?: string;
 }
 
+export interface Collection {
+  id: string;
+  user_id: string;
+  title: string;
+  description?: string;
+  is_public: boolean;
+  is_collaborative: boolean;
+  created_at: Date;
+  updated_at: Date;
+  // Metadata
+  item_count?: number;
+  follower_count?: number;
+  cover_image?: string; // URL to cover image or first item poster
+}
+
+export interface CollectionItem {
+  id: string;
+  collection_id: string;
+  media_type: "book" | "anime" | "manga" | "movie" | "music";
+  media_id: string;
+  added_by_user_id: string;
+  position: number; // For manual ordering
+  notes?: string;
+  created_at: Date;
+}
+
+export interface QueueItem {
+  id: string;
+  user_id: string;
+  media_type: "book" | "anime" | "manga" | "movie" | "music";
+  media_id: string;
+  position: number;
+  priority: "low" | "medium" | "high";
+  added_at: Date;
+  notes?: string;
+}
+
+export interface Friendship {
+  id: string;
+  user_id: string;
+  friend_id: string;
+  status: "pending" | "accepted" | "blocked";
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface ActivityFeedItem {
+  id: string;
+  user_id: string;
+  activity_type: "rating" | "review" | "collection" | "friend" | "achievement";
+  content: string; // JSON stringified data
+  is_public: boolean;
+  created_at: Date;
+}
+
 // Union type for all media items
 export type MediaItem = Book | Anime | Manga | Movie | Music;
 
