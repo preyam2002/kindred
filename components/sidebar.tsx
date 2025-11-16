@@ -27,6 +27,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { Logo } from "./logo";
+import { GlobalSearch } from "./global-search";
 import { useState } from "react";
 
 interface SidebarProps {
@@ -201,6 +202,11 @@ export function Sidebar({ className = "" }: SidebarProps) {
           {/* Logo */}
           <div className="p-6 border-b border-border">
             <Logo />
+          </div>
+
+          {/* Global Search */}
+          <div className="p-4 border-b border-border">
+            <GlobalSearch />
           </div>
 
           {/* Navigation */}
