@@ -18,6 +18,9 @@ import {
   Heart,
   TrendingUp,
   Smile,
+  Trophy,
+  Calendar,
+  PlayCircle,
 } from "lucide-react";
 import { Logo } from "./logo";
 import { useState } from "react";
@@ -66,6 +69,21 @@ export function Sidebar({ className = "" }: SidebarProps) {
       name: "Group Consensus",
       href: "/group-consensus",
       icon: Users,
+    },
+    {
+      name: "Taste Challenge",
+      href: "/taste-challenge",
+      icon: Trophy,
+    },
+    {
+      name: "Year Wrapped",
+      href: "/year-wrapped",
+      icon: Calendar,
+    },
+    {
+      name: "Watch Together",
+      href: "/watch-together",
+      icon: PlayCircle,
     },
     {
       name: "AI Chat",
