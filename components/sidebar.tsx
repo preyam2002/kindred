@@ -63,6 +63,11 @@ export function Sidebar({ className = "" }: SidebarProps) {
       icon: Smile,
     },
     {
+      name: "Group Consensus",
+      href: "/group-consensus",
+      icon: Users,
+    },
+    {
       name: "AI Chat",
       href: "/chat",
       icon: MessageCircle,
