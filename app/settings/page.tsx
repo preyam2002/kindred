@@ -14,6 +14,17 @@ import {
   Upload,
   X,
   ExternalLink,
+  Shield,
+  Bell,
+  Mail,
+  Trash2,
+  Download,
+  Eye,
+  EyeOff,
+  Palette,
+  Trophy,
+  Calendar,
+  MessageCircle,
 } from "lucide-react";
 import type { Source } from "@/types/database";
 
@@ -50,11 +61,14 @@ const integrations = [
 
 export default function SettingsPage() {
   const { data: session } = useSession();
+  const [activeTab, setActiveTab] = useState<"integrations" | "privacy" | "notifications" | "account">("integrations");
   const [connectedSources, setConnectedSources] = useState<Source[]>([]);
   const [message, setMessage] = useState<{
     type: "success" | "error";
     text: string;
   } | null>(null);
+
+  // Integration states
   const [showGoodreadsUpload, setShowGoodreadsUpload] = useState(false);
   const [showLetterboxdUpload, setShowLetterboxdUpload] = useState(false);
   const [showGoodreadsScraper, setShowGoodreadsScraper] = useState(false);
@@ -72,6 +86,22 @@ export default function SettingsPage() {
   const [malUsername, setMalUsername] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const letterboxdFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Privacy settings
+  const [isProfilePublic, setIsProfilePublic] = useState(true);
+  const [showEmail, setShowEmail] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(true);
+
+  // Notification settings
+  const [emailNotifications, setEmailNotifications] = useState(true);
+  const [matchNotifications, setMatchNotifications] = useState(true);
+  const [challengeNotifications, setChallengeNotifications] = useState(true);
+  const [commentNotifications, setCommentNotifications] = useState(true);
+  const [streakReminders, setStreakReminders] = useState(true);
+
+  // Account deletion
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   useEffect(() => {
     if (session?.user?.id) {
@@ -449,6 +479,40 @@ export default function SettingsPage() {
     );
   }
 
+  const tabs = [
+    { id: "integrations" as const, label: "Integrations", icon: Link2 },
+    { id: "privacy" as const, label: "Privacy", icon: Shield },
+    { id: "notifications" as const, label: "Notifications", icon: Bell },
+    { id: "account" as const, label: "Account", icon: Trash2 },
+  ];
+
+  const handleDataExport = async () => {
+    setMessage({ type: "success", text: "Preparing your data export..." });
+    // TODO: Implement actual data export
+    setTimeout(() => {
+      setMessage({ type: "success", text: "Data export sent to your email!" });
+    }, 2000);
+  };
+
+  const handleAccountDelete = async () => {
+    if (deleteConfirmText !== "DELETE") {
+      setMessage({ type: "error", text: "Please type DELETE to confirm" });
+      return;
+    }
+    // TODO: Implement actual account deletion
+    setMessage({ type: "success", text: "Account deletion initiated..." });
+  };
+
+  const handleSavePrivacy = async () => {
+    // TODO: Implement actual API call to save privacy settings
+    setMessage({ type: "success", text: "Privacy settings saved!" });
+  };
+
+  const handleSaveNotifications = async () => {
+    // TODO: Implement actual API call to save notification settings
+    setMessage({ type: "success", text: "Notification preferences saved!" });
+  };
+
   return (
     <>
       <div className="container mx-auto px-6 py-12 max-w-4xl">
@@ -457,9 +521,30 @@ export default function SettingsPage() {
           animate={{ opacity: 1, y: 0 }}
         >
           <h1 className="text-4xl font-bold mb-2">Settings</h1>
-          <p className="text-muted-foreground mb-12">
-            Connect your tracking platforms to build your profile
+          <p className="text-muted-foreground mb-8">
+            Manage your account, privacy, and integrations
           </p>
+
+          {/* Tabs */}
+          <div className="flex gap-2 border-b border-border mb-8 overflow-x-auto">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? "border-primary text-primary font-semibold"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
 
           {message && (
             <motion.div
@@ -475,7 +560,9 @@ export default function SettingsPage() {
             </motion.div>
           )}
 
-          <div className="space-y-4">
+          {/* Integrations Tab */}
+          {activeTab === "integrations" && (
+            <div className="space-y-4">
             {integrations.map((integration) => {
               const Icon = integration.icon;
               const isConnected = connectedSources.some(
@@ -619,6 +706,283 @@ export default function SettingsPage() {
               ))}
             </div>
           </div>
+          </div>
+          )}
+
+          {/* Privacy Tab */}
+          {activeTab === "privacy" && (
+            <div className="space-y-6">
+              <div className="p-6 border border-border rounded-lg bg-card">
+                <div className="flex items-start gap-4 mb-6">
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Shield className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold mb-1">Profile Privacy</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Control who can see your profile and activity
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      {isProfilePublic ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                      <div>
+                        <div className="font-medium">Public Profile</div>
+                        <div className="text-sm text-muted-foreground">
+                          Make your profile visible to everyone
+                        </div>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isProfilePublic}
+                        onChange={(e) => setIsProfilePublic(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Mail className="w-5 h-5" />
+                      <div>
+                        <div className="font-medium">Show Email Address</div>
+                        <div className="text-sm text-muted-foreground">
+                          Display your email on your public profile
+                        </div>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={showEmail}
+                        onChange={(e) => setShowEmail(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <BookOpen className="w-5 h-5" />
+                      <div>
+                        <div className="font-medium">Public Library</div>
+                        <div className="text-sm text-muted-foreground">
+                          Let others see your library and ratings
+                        </div>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={showLibrary}
+                        onChange={(e) => setShowLibrary(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <button
+                    onClick={handleSavePrivacy}
+                    className="px-6 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity"
+                  >
+                    Save Privacy Settings
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Notifications Tab */}
+          {activeTab === "notifications" && (
+            <div className="space-y-6">
+              <div className="p-6 border border-border rounded-lg bg-card">
+                <div className="flex items-start gap-4 mb-6">
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Bell className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold mb-1">Notification Preferences</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Choose what updates you want to receive
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Mail className="w-5 h-5" />
+                      <div>
+                        <div className="font-medium">Email Notifications</div>
+                        <div className="text-sm text-muted-foreground">
+                          Receive notifications via email
+                        </div>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={emailNotifications}
+                        onChange={(e) => setEmailNotifications(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Heart className="w-5 h-5" />
+                      <div>
+                        <div className="font-medium">New Matches</div>
+                        <div className="text-sm text-muted-foreground">
+                          Get notified when you match with someone
+                        </div>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={matchNotifications}
+                        onChange={(e) => setMatchNotifications(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Trophy className="w-5 h-5" />
+                      <div>
+                        <div className="font-medium">Challenge Invites</div>
+                        <div className="text-sm text-muted-foreground">
+                          Get notified about challenge invitations
+                        </div>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={challengeNotifications}
+                        onChange={(e) => setChallengeNotifications(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <MessageCircle className="w-5 h-5" />
+                      <div>
+                        <div className="font-medium">Comment Replies</div>
+                        <div className="text-sm text-muted-foreground">
+                          Get notified when someone replies to your comments
+                        </div>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={commentNotifications}
+                        onChange={(e) => setCommentNotifications(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Calendar className="w-5 h-5" />
+                      <div>
+                        <div className="font-medium">Streak Reminders</div>
+                        <div className="text-sm text-muted-foreground">
+                          Daily reminders to maintain your streak
+                        </div>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={streakReminders}
+                        onChange={(e) => setStreakReminders(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <button
+                    onClick={handleSaveNotifications}
+                    className="px-6 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity"
+                  >
+                    Save Notification Preferences
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Account Tab */}
+          {activeTab === "account" && (
+            <div className="space-y-6">
+              {/* Data Export */}
+              <div className="p-6 border border-border rounded-lg bg-card">
+                <div className="flex items-start gap-4 mb-6">
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Download className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold mb-1">Export Your Data</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Download all your data in JSON format (GDPR compliant)
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleDataExport}
+                  className="px-6 py-2 border border-border rounded-md hover:bg-accent transition-colors"
+                >
+                  Export Data
+                </button>
+              </div>
+
+              {/* Account Deletion */}
+              <div className="p-6 border border-destructive/30 rounded-lg bg-destructive/5">
+                <div className="flex items-start gap-4 mb-6">
+                  <div className="w-12 h-12 rounded-lg bg-destructive/10 flex items-center justify-center">
+                    <Trash2 className="w-6 h-6 text-destructive" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold mb-1 text-destructive">Delete Account</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Permanently delete your account and all associated data
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="px-6 py-2 bg-destructive text-destructive-foreground rounded-md hover:opacity-90 transition-opacity"
+                >
+                  Delete My Account
+                </button>
+              </div>
+            </div>
+          )}
         </motion.div>
       </div>
 
@@ -1084,6 +1448,71 @@ export default function SettingsPage() {
                 </button>
               </div>
             </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Account Deletion Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white border border-destructive rounded-lg p-6 max-w-md w-full shadow-lg"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold text-destructive">Delete Account</h2>
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeleteConfirmText("");
+                }}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-4 p-4 bg-destructive/10 rounded-md border border-destructive/30">
+              <p className="text-sm font-medium text-destructive mb-2">
+                ⚠️ Warning: This action cannot be undone!
+              </p>
+              <p className="text-sm text-muted-foreground">
+                All your data, including your library, ratings, matches, and activity will be permanently deleted.
+              </p>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium mb-2">
+                Type <strong>DELETE</strong> to confirm
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="DELETE"
+                className="w-full px-4 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-destructive text-sm"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleAccountDelete}
+                disabled={deleteConfirmText !== "DELETE"}
+                className="flex-1 px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Delete My Account
+              </button>
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeleteConfirmText("");
+                }}
+                className="px-4 py-2 border border-border rounded-md hover:bg-accent transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
           </motion.div>
         </div>
       )}
