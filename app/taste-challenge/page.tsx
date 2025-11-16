@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import {
   Sparkles,
@@ -13,30 +13,85 @@ import {
   Target,
   Users,
   ArrowRight,
+  Eye,
+  RefreshCw,
+  Calendar,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { formatDistanceToNow } from "date-fns";
+
+interface ChallengeItem {
+  id: string;
+  title: string;
+  type: string;
+  poster_url?: string;
+  rating: number;
+}
 
 interface Challenge {
   id: string;
-  userId: string;
+  userId?: string;
   username: string;
-  items: Array<{
-    id: string;
-    title: string;
-    type: string;
-    poster_url?: string;
-    rating: number;
-  }>;
+  items: ChallengeItem[];
   createdAt: string;
-  challengeUrl: string;
+  challengeUrl?: string;
+  expiresAt?: string;
+  isActive?: boolean;
 }
 
 export default function TasteChallengePage() {
   const { data: session, status } = useSession();
   const [challenge, setChallenge] = useState<Challenge | null>(null);
+  const [preview, setPreview] = useState<ChallengeItem[] | null>(null);
+  const [existingChallenges, setExistingChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [loadingChallenges, setLoadingChallenges] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [view, setView] = useState<"main" | "preview" | "success">("main");
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      loadExistingChallenges();
+    }
+  }, [status]);
+
+  const loadPreview = async () => {
+    setLoadingPreview(true);
+    try {
+      const res = await fetch("/api/taste-challenge/preview");
+      if (res.ok) {
+        const data = await res.json();
+        setPreview(data.items);
+        setView("preview");
+      } else {
+        const error = await res.json();
+        alert(error.error || "Failed to load preview");
+      }
+    } catch (error) {
+      console.error("Error loading preview:", error);
+      alert("An error occurred. Please try again.");
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
+
+  const loadExistingChallenges = async () => {
+    setLoadingChallenges(true);
+    try {
+      const res = await fetch("/api/taste-challenge/list");
+      if (res.ok) {
+        const data = await res.json();
+        setExistingChallenges(data.challenges || []);
+      }
+    } catch (error) {
+      console.error("Error loading challenges:", error);
+    } finally {
+      setLoadingChallenges(false);
+    }
+  };
 
   const createChallenge = async () => {
     if (status !== "authenticated") {
@@ -53,6 +108,8 @@ export default function TasteChallengePage() {
       if (res.ok) {
         const data = await res.json();
         setChallenge(data);
+        setView("success");
+        loadExistingChallenges(); // Refresh the list
       } else {
         const error = await res.json();
         alert(error.error || "Failed to create challenge");
@@ -128,7 +185,115 @@ export default function TasteChallengePage() {
     );
   }
 
-  if (challenge) {
+  // Preview View
+  if (view === "preview" && preview) {
+    return (
+      <div className="min-h-screen bg-background p-6">
+        <div className="container mx-auto max-w-4xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <button
+              onClick={() => setView("main")}
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors"
+            >
+              <ArrowRight className="w-4 h-4 rotate-180" />
+              Back
+            </button>
+
+            <div className="text-center mb-8">
+              <div className="inline-block p-4 bg-primary/10 border-2 border-primary/20 mb-4">
+                <Eye className="w-10 h-10 text-primary" />
+              </div>
+              <h1 className="font-display text-4xl font-bold mb-3">
+                Preview Your Challenge
+              </h1>
+              <p className="text-muted-foreground">
+                These are the {preview.length} items that will be in your challenge
+              </p>
+            </div>
+
+            {/* Preview Items */}
+            <div className="paper-card p-8 mb-6">
+              <div className="grid grid-cols-3 md:grid-cols-5 gap-4 mb-6">
+                {preview.map((item, index) => (
+                  <div
+                    key={index}
+                    className="relative aspect-[2/3] bg-muted rounded overflow-hidden group"
+                  >
+                    {item.poster_url ? (
+                      <img
+                        src={item.poster_url}
+                        alt={item.title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground p-2 text-center">
+                        {item.title}
+                      </div>
+                    )}
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/80 backdrop-blur-sm p-1 text-center">
+                      <span className="text-xs font-mono font-bold text-white">
+                        {item.rating}/10
+                      </span>
+                    </div>
+                    <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity p-2 flex items-center justify-center">
+                      <p className="text-white text-xs text-center font-semibold">
+                        {item.title}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <span>Your highest-rated items</span>
+                <span className="flex items-center gap-2">
+                  <Trophy className="w-4 h-4" />
+                  Rated 7+ or higher
+                </span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={() => setView("main")}
+                className="px-6 py-3 border-2 border-border rounded-lg hover:bg-accent transition-colors font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={createChallenge}
+                disabled={loading}
+                className="px-8 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-all font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 flex items-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <Sparkles className="w-5 h-5 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-5 h-5" />
+                    Confirm & Create Challenge
+                  </>
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
+  // Success View
+  if (view === "success" && challenge) {
     return (
       <div className="min-h-screen bg-background p-6">
         <div className="container mx-auto max-w-4xl">
@@ -239,12 +404,26 @@ export default function TasteChallengePage() {
             </ul>
           </div>
 
-          <div className="text-center mt-8">
+          <div className="text-center mt-8 flex gap-4 justify-center">
             <button
-              onClick={() => setChallenge(null)}
-              className="font-mono text-sm text-muted-foreground hover:text-primary transition-colors"
+              onClick={() => {
+                setChallenge(null);
+                setView("main");
+              }}
+              className="px-6 py-3 border-2 border-border rounded-lg hover:bg-accent transition-colors font-semibold"
             >
-              Create Another Challenge
+              Back to Challenges
+            </button>
+            <button
+              onClick={() => {
+                setChallenge(null);
+                setPreview(null);
+                loadPreview();
+              }}
+              className="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-semibold flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Create Another
             </button>
           </div>
         </div>
@@ -302,32 +481,98 @@ export default function TasteChallengePage() {
         </div>
 
         {/* CTA */}
-        <div className="text-center animate-fadeInUp animate-delay-200">
+        <div className="text-center animate-fadeInUp animate-delay-200 mb-12">
           <div className="paper-card p-12 rule-double">
             <h2 className="font-display text-3xl font-bold mb-6">Ready to challenge your friends?</h2>
             <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-              We'll create a personalized challenge based on your library. It takes just seconds!
+              We'll create a personalized challenge based on your library. Preview before sharing!
             </p>
             <button
-              onClick={createChallenge}
-              disabled={loading}
+              onClick={loadPreview}
+              disabled={loadingPreview}
               className="stamp bg-primary text-primary-foreground text-lg hover:bg-primary/90 transition-all hover:-translate-y-1 hover:shadow-lg disabled:opacity-50"
             >
-              {loading ? (
+              {loadingPreview ? (
                 <>
                   <Sparkles className="w-5 h-5 mr-2 inline animate-spin" />
-                  Creating Challenge...
+                  Loading Preview...
                 </>
               ) : (
                 <>
-                  <Trophy className="w-5 h-5 mr-2 inline" />
-                  Create My Challenge
+                  <Eye className="w-5 h-5 mr-2 inline" />
+                  Preview My Challenge
                 </>
               )}
             </button>
           </div>
         </div>
+
+        {/* Existing Challenges */}
+        {existingChallenges.length > 0 && (
+          <div className="animate-fadeInUp animate-delay-300">
+            <h2 className="font-display text-2xl font-bold mb-6 flex items-center gap-3">
+              <Calendar className="w-6 h-6" />
+              Your Challenges
+            </h2>
+            <div className="space-y-4">
+              {existingChallenges.map((c) => (
+                <div
+                  key={c.id}
+                  className="paper-card p-6 flex items-center justify-between hover:shadow-lg transition-shadow"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="font-semibold">
+                        Challenge by @{c.username}
+                      </h3>
+                      {c.isActive ? (
+                        <span className="text-xs px-2 py-1 bg-green-500/10 text-green-600 border border-green-500/20 rounded">
+                          Active
+                        </span>
+                      ) : (
+                        <span className="text-xs px-2 py-1 bg-muted text-muted-foreground border border-border rounded">
+                          Expired
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Trophy className="w-4 h-4" />
+                        {c.items.length} items
+                      </span>
+                      <span>
+                        Created {formatDistanceToNow(new Date(c.createdAt), { addSuffix: true })}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleCopyChallenge(c.id)}
+                      className="px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors text-sm font-medium"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+                    <Link
+                      href={`/taste-challenge/${c.id}`}
+                      className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
+                    >
+                      View
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
+
+  function handleCopyChallenge(challengeId: string) {
+    const url = `${window.location.origin}/taste-challenge/${challengeId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      // Show a brief success indicator
+      alert("Challenge link copied!");
+    });
+  }
 }
