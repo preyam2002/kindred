@@ -115,6 +115,16 @@ export function Sidebar({ className = "" }: SidebarProps) {
       icon: Share2,
     },
     {
+      name: "Social Feed",
+      href: "/social-feed",
+      icon: TrendingUp,
+    },
+    {
+      name: "Leaderboards",
+      href: "/leaderboards",
+      icon: Trophy,
+    },
+    {
       name: "AI Chat",
       href: "/chat",
       icon: MessageCircle,
