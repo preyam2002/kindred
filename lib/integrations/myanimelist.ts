@@ -1,6 +1,7 @@
 // MyAnimeList API integration utilities using client_auth (API key only)
 // Note: OAuth is not required - public lists can be accessed with just CLIENT_ID
 import { supabase } from "@/lib/db/supabase";
+import { cachedFetch, CacheKeys } from "@/lib/cache";
 import crypto from "crypto";
 
 const MAL_API_URL = "https://api.myanimelist.net/v2";
@@ -11,6 +12,7 @@ const MAL_CLIENT_SECRET = process.env.MYANIMELIST_CLIENT_SECRET || "";
 /**
  * Get user's anime list using client_auth (API key)
  * Per API docs: client_auth is sufficient for reading public lists
+ * Cached for 1 hour to prevent rate limiting
  */
 export async function getMALAnimeList(
   username: string,
@@ -18,30 +20,39 @@ export async function getMALAnimeList(
   offset: number = 0,
   status?: "watching" | "completed" | "on_hold" | "dropped" | "plan_to_watch"
 ): Promise<any> {
-  const fields = "id,title,main_picture,mean,genres,media_type,num_episodes,status,my_list_status";
-  let url = `${MAL_API_URL}/users/${username}/animelist?fields=${fields}&limit=${limit}&offset=${offset}`;
+  const cacheKey = `${CacheKeys.malUserAnimeList(username)}:${limit}:${offset}${status ? `:${status}` : ""}`;
 
-  if (status) {
-    url += `&status=${status}`;
-  }
+  return cachedFetch(
+    cacheKey,
+    async () => {
+      const fields = "id,title,main_picture,mean,genres,media_type,num_episodes,status,my_list_status";
+      let url = `${MAL_API_URL}/users/${username}/animelist?fields=${fields}&limit=${limit}&offset=${offset}`;
 
-  const response = await fetch(url, {
-    headers: {
-      "X-MAL-CLIENT-ID": MAL_CLIENT_ID,
+      if (status) {
+        url += `&status=${status}`;
+      }
+
+      const response = await fetch(url, {
+        headers: {
+          "X-MAL-CLIENT-ID": MAL_CLIENT_ID,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => response.statusText);
+        throw new Error(`Failed to fetch anime list: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      return await response.json();
     },
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => response.statusText);
-    throw new Error(`Failed to fetch anime list: ${response.status} ${response.statusText} - ${errorText}`);
-  }
-
-  return await response.json();
+    3600 // Cache for 1 hour
+  );
 }
 
 /**
  * Get user's manga list using client_auth (API key)
  * Per API docs: client_auth is sufficient for reading public lists
+ * Cached for 1 hour to prevent rate limiting
  */
 export async function getMALMangaList(
   username: string,
@@ -49,25 +60,33 @@ export async function getMALMangaList(
   offset: number = 0,
   status?: "reading" | "completed" | "on_hold" | "dropped" | "plan_to_read"
 ): Promise<any> {
-  const fields = "id,title,main_picture,mean,genres,media_type,num_chapters,status,my_list_status";
-  let url = `${MAL_API_URL}/users/${username}/mangalist?fields=${fields}&limit=${limit}&offset=${offset}`;
+  const cacheKey = `${CacheKeys.malUserMangaList(username)}:${limit}:${offset}${status ? `:${status}` : ""}`;
 
-  if (status) {
-    url += `&status=${status}`;
-  }
+  return cachedFetch(
+    cacheKey,
+    async () => {
+      const fields = "id,title,main_picture,mean,genres,media_type,num_chapters,status,my_list_status";
+      let url = `${MAL_API_URL}/users/${username}/mangalist?fields=${fields}&limit=${limit}&offset=${offset}`;
 
-  const response = await fetch(url, {
-    headers: {
-      "X-MAL-CLIENT-ID": MAL_CLIENT_ID,
+      if (status) {
+        url += `&status=${status}`;
+      }
+
+      const response = await fetch(url, {
+        headers: {
+          "X-MAL-CLIENT-ID": MAL_CLIENT_ID,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => response.statusText);
+        throw new Error(`Failed to fetch manga list: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      return await response.json();
     },
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => response.statusText);
-    throw new Error(`Failed to fetch manga list: ${response.status} ${response.statusText} - ${errorText}`);
-  }
-
-  return await response.json();
+    3600 // Cache for 1 hour
+  );
 }
 
 /**

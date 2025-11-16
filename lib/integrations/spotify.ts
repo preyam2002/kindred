@@ -1,5 +1,6 @@
 // Spotify OAuth 2.0 integration utilities
 import { supabase } from "@/lib/db/supabase";
+import { cachedFetch, CacheKeys } from "@/lib/cache";
 
 const SPOTIFY_BASE_URL = "https://accounts.spotify.com";
 const SPOTIFY_API_URL = "https://api.spotify.com/v1";
@@ -133,97 +134,138 @@ export async function getSpotifyUserProfile(accessToken: string): Promise<any> {
 
 /**
  * Get user's saved tracks
+ * Cached for 30 minutes to prevent rate limiting
  */
 export async function getSpotifySavedTracks(
   accessToken: string,
   limit: number = 50,
   offset: number = 0
 ): Promise<any> {
-  const response = await fetch(
-    `${SPOTIFY_API_URL}/me/tracks?limit=${limit}&offset=${offset}`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    }
+  // Use a hash of the access token for cache key (first 8 chars for uniqueness)
+  const tokenHash = accessToken.substring(0, 8);
+  const cacheKey = `spotify:saved_tracks:${tokenHash}:${limit}:${offset}`;
+
+  return cachedFetch(
+    cacheKey,
+    async () => {
+      const response = await fetch(
+        `${SPOTIFY_API_URL}/me/tracks?limit=${limit}&offset=${offset}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch saved tracks: ${response.statusText}`);
+      }
+
+      return await response.json();
+    },
+    1800 // Cache for 30 minutes
   );
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch saved tracks: ${response.statusText}`);
-  }
-
-  return await response.json();
 }
 
 /**
  * Get user's top tracks
+ * Cached for 1 hour to prevent rate limiting (top tracks change slowly)
  */
 export async function getSpotifyTopTracks(
   accessToken: string,
   timeRange: "short_term" | "medium_term" | "long_term" = "medium_term",
   limit: number = 50
 ): Promise<any> {
-  const response = await fetch(
-    `${SPOTIFY_API_URL}/me/top/tracks?time_range=${timeRange}&limit=${limit}`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    }
+  const tokenHash = accessToken.substring(0, 8);
+  const cacheKey = `spotify:top_tracks:${tokenHash}:${timeRange}:${limit}`;
+
+  return cachedFetch(
+    cacheKey,
+    async () => {
+      const response = await fetch(
+        `${SPOTIFY_API_URL}/me/top/tracks?time_range=${timeRange}&limit=${limit}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch top tracks: ${response.statusText}`);
+      }
+
+      return await response.json();
+    },
+    3600 // Cache for 1 hour
   );
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch top tracks: ${response.statusText}`);
-  }
-
-  return await response.json();
 }
 
 /**
  * Get user's top artists
+ * Cached for 1 hour to prevent rate limiting (top artists change slowly)
  */
 export async function getSpotifyTopArtists(
   accessToken: string,
   timeRange: "short_term" | "medium_term" | "long_term" = "medium_term",
   limit: number = 50
 ): Promise<any> {
-  const response = await fetch(
-    `${SPOTIFY_API_URL}/me/top/artists?time_range=${timeRange}&limit=${limit}`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    }
+  const tokenHash = accessToken.substring(0, 8);
+  const cacheKey = `spotify:top_artists:${tokenHash}:${timeRange}:${limit}`;
+
+  return cachedFetch(
+    cacheKey,
+    async () => {
+      const response = await fetch(
+        `${SPOTIFY_API_URL}/me/top/artists?time_range=${timeRange}&limit=${limit}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch top artists: ${response.statusText}`);
+      }
+
+      return await response.json();
+    },
+    3600 // Cache for 1 hour
   );
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch top artists: ${response.statusText}`);
-  }
-
-  return await response.json();
 }
 
 /**
  * Get user's recently played tracks
+ * Cached for 5 minutes to prevent rate limiting (recently played changes frequently)
  */
 export async function getSpotifyRecentlyPlayed(
   accessToken: string,
   limit: number = 50
 ): Promise<any> {
-  const response = await fetch(
-    `${SPOTIFY_API_URL}/me/player/recently-played?limit=${limit}`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    }
+  const tokenHash = accessToken.substring(0, 8);
+  const cacheKey = `spotify:recently_played:${tokenHash}:${limit}`;
+
+  return cachedFetch(
+    cacheKey,
+    async () => {
+      const response = await fetch(
+        `${SPOTIFY_API_URL}/me/player/recently-played?limit=${limit}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch recently played tracks: ${response.statusText}`);
+      }
+
+      return await response.json();
+    },
+    300 // Cache for 5 minutes (recent activity changes frequently)
   );
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch recently played tracks: ${response.statusText}`);
-  }
-
-  return await response.json();
 }
 
 /**
