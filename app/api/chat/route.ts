@@ -169,8 +169,28 @@ export async function POST(request: NextRequest) {
       .order("similarity_score", { ascending: false })
       .limit(10);
 
+    // Get user's taste profile
+    const { data: tasteProfile } = await supabase
+      .from("taste_profiles")
+      .select("*")
+      .eq("user_email", session.user.email)
+      .single();
+
+    // Get recent challenge progress
+    const { data: challengeProgress } = await supabase
+      .from("user_streaks")
+      .select("current_streak, total_points, level")
+      .eq("user_email", session.user.email)
+      .single();
+
     // Build context about the user
-    const userContext = buildUserContext(userData, userMedia || [], matches || []);
+    const userContext = buildUserContext(
+      userData,
+      userMedia || [],
+      matches || [],
+      tasteProfile,
+      challengeProgress
+    );
 
     // Check if API key is configured
     if (!process.env.OPENAI_API_KEY) {
@@ -346,12 +366,47 @@ export async function GET(request: NextRequest) {
 function buildUserContext(
   userData: any,
   userMedia: Array<{ media_type: string; rating: number | null; media_item: any }>,
-  matches: any[]
+  matches: any[],
+  tasteProfile?: any,
+  challengeProgress?: any
 ): string {
   let context = "";
 
   if (userData?.bio) {
     context += `User bio: "${userData.bio}"\n\n`;
+  }
+
+  // Taste Profile Information
+  if (tasteProfile) {
+    context += "TASTE PROFILE:\n";
+    if (tasteProfile.top_genres && tasteProfile.top_genres.length > 0) {
+      context += `Top Genres: ${tasteProfile.top_genres.join(", ")}\n`;
+    }
+    if (tasteProfile.mainstream_score !== undefined) {
+      context += `Mainstream Score: ${tasteProfile.mainstream_score}% (how popular vs niche their taste is)\n`;
+    }
+    if (tasteProfile.diversity_score !== undefined) {
+      context += `Diversity Score: ${tasteProfile.diversity_score}% (how varied their taste is across genres)\n`;
+    }
+    if (tasteProfile.rating_average !== undefined) {
+      context += `Average Rating: ${tasteProfile.rating_average.toFixed(1)}/10\n`;
+    }
+    context += "\n";
+  }
+
+  // Challenge & Gamification Stats
+  if (challengeProgress) {
+    context += "GAMIFICATION PROGRESS:\n";
+    if (challengeProgress.current_streak) {
+      context += `Current Streak: ${challengeProgress.current_streak} days\n`;
+    }
+    if (challengeProgress.level) {
+      context += `Level: ${challengeProgress.level}\n`;
+    }
+    if (challengeProgress.total_points) {
+      context += `Total Points: ${challengeProgress.total_points}\n`;
+    }
+    context += "\n";
   }
 
   if (userMedia && userMedia.length > 0) {
@@ -363,17 +418,17 @@ function buildUserContext(
       mediaByType[item.media_type].push(item);
     });
 
-    context += "User's media library:\n";
+    context += "LIBRARY (Top Rated):\n";
     for (const [type, items] of Object.entries(mediaByType)) {
       const typeLabel = type === "book" ? "Books" : type === "movie" ? "Movies" : type.charAt(0).toUpperCase() + type.slice(1);
-      context += `\n${typeLabel} (top rated):\n`;
+      context += `\n${typeLabel}:\n`;
       items.slice(0, 10).forEach((item) => {
         const mediaItem = item.media_item;
         if (mediaItem) {
           const title = mediaItem.title || "Unknown";
           const rating = item.rating ? ` - ${item.rating}/10` : "";
           let extra = "";
-          
+
           if (type === "book" && mediaItem.author) {
             extra = ` by ${mediaItem.author}`;
           } else if (type === "music" && mediaItem.artist) {
@@ -381,18 +436,20 @@ function buildUserContext(
           } else if (type === "movie" && mediaItem.year) {
             extra = ` (${mediaItem.year})`;
           }
-          
+
           context += `  - ${title}${extra}${rating}\n`;
         }
       });
     }
+    context += "\n";
   }
 
   if (matches && matches.length > 0) {
     const avgScore =
       matches.reduce((sum, m) => sum + m.similarity_score, 0) / matches.length;
-    context += `\nUser has ${matches.length} matches with an average compatibility score of ${avgScore.toFixed(0)}%.\n`;
-    context += `Top match: ${matches[0].similarity_score}%\n`;
+    context += `SOCIAL:\n`;
+    context += `${matches.length} taste matches with ${avgScore.toFixed(0)}% average compatibility\n`;
+    context += `Best match: ${matches[0].similarity_score}% compatibility\n`;
   }
 
   return context;
