@@ -42,6 +42,11 @@ export async function exchangeSpotifyToken(
   code: string,
   redirectUri: string
 ): Promise<{ access_token: string; refresh_token: string; expires_in: number }> {
+  // Validate environment variables
+  if (!SPOTIFY_CLIENT_ID || !SPOTIFY_CLIENT_SECRET) {
+    throw new Error("Spotify client credentials are not configured");
+  }
+
   const response = await fetch(`${SPOTIFY_BASE_URL}/api/token`, {
     method: "POST",
     headers: {
@@ -56,8 +61,29 @@ export async function exchangeSpotifyToken(
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Failed to exchange token: ${response.statusText} - ${error}`);
+    const errorText = await response.text();
+    let errorMessage = `Failed to exchange token: ${response.status} ${response.statusText}`;
+    
+    try {
+      const errorJson = JSON.parse(errorText);
+      errorMessage += ` - ${errorJson.error || errorText}`;
+      if (errorJson.error_description) {
+        errorMessage += `: ${errorJson.error_description}`;
+      }
+    } catch {
+      errorMessage += ` - ${errorText}`;
+    }
+    
+    // Log additional context for debugging
+    console.error("Spotify token exchange failed:", {
+      status: response.status,
+      statusText: response.statusText,
+      redirectUri,
+      hasCode: !!code,
+      errorText,
+    });
+    
+    throw new Error(errorMessage);
   }
 
   return await response.json();
@@ -208,6 +234,7 @@ export async function syncSpotifyData(
   userId: string,
   accessToken: string
 ): Promise<{ tracksImported: number; errors: number }> {
+  console.log("[Spotify][Sync] Starting sync", { userId });
   // Verify user exists before proceeding
   const { data: user, error: userError } = await supabase
     .from("users")
@@ -241,6 +268,11 @@ export async function syncSpotifyData(
       while (hasMore) {
         const tracksData = await getSpotifySavedTracks(accessToken, limit, offset);
         const tracks = tracksData.items || [];
+        console.log("[Spotify][Sync] Fetched saved tracks batch", {
+          offset,
+          limit,
+          batchSize: tracks.length,
+        });
 
         for (const item of tracks) {
           const track = item.track || item;
@@ -256,6 +288,9 @@ export async function syncSpotifyData(
         hasMore = tracks.length === limit;
         offset += limit;
       }
+      console.log("[Spotify][Sync] Total saved tracks collected", {
+        total: allTracks.filter((t) => t.tags.includes("saved")).length,
+      });
     } catch (error) {
       console.error("Error fetching saved tracks:", error);
       errors++;
@@ -272,6 +307,10 @@ export async function syncSpotifyData(
       try {
         const topTracksData = await getSpotifyTopTracks(accessToken, range, 50);
         const topTracks = topTracksData.items || [];
+        console.log("[Spotify][Sync] Fetched top tracks", {
+          range,
+          batchSize: topTracks.length,
+        });
 
         for (const track of topTracks) {
           if (track && track.id) {
@@ -286,11 +325,17 @@ export async function syncSpotifyData(
         errors++;
       }
     }
+    console.log("[Spotify][Sync] Total top tracks collected", {
+      total: allTracks.filter((t) => t.tags.some((tag) => tag.startsWith("top_track"))).length,
+    });
 
     // Fetch recently played tracks
     try {
       const recentlyPlayedData = await getSpotifyRecentlyPlayed(accessToken, 50);
       const recentlyPlayed = recentlyPlayedData.items || [];
+      console.log("[Spotify][Sync] Fetched recently played tracks", {
+        batchSize: recentlyPlayed.length,
+      });
 
       for (const item of recentlyPlayed) {
         const track = item.track;
@@ -308,11 +353,15 @@ export async function syncSpotifyData(
     }
 
     if (allTracks.length === 0) {
+      console.warn("[Spotify][Sync] No tracks collected from Spotify APIs");
       return { tracksImported: 0, errors };
     }
+    console.log("[Spotify][Sync] Total tracks collected across sources", {
+      total: allTracks.length,
+    });
 
     // Step 1: Batch check existing music items
-    const trackIds = allTracks.map(t => t.track.id);
+    const trackIds = Array.from(new Set(allTracks.map(t => t.track.id)));
     const { data: existingMusicItems } = await supabase
       .from("music")
       .select("id, source_item_id")
@@ -322,6 +371,10 @@ export async function syncSpotifyData(
     const existingMusicMap = new Map(
       (existingMusicItems || []).map(item => [item.source_item_id, item.id])
     );
+    console.log("[Spotify][Sync] Existing music lookup", {
+      requestedIds: trackIds.length,
+      existingCount: existingMusicMap.size,
+    });
 
     // Step 2: Prepare new music items and user_media records
     const newMusicItems: Array<{
@@ -336,6 +389,7 @@ export async function syncSpotifyData(
     }> = [];
 
     const musicItemMap = new Map<string, string>();
+    const pendingNewTrackIds = new Set<string>();
     const userMediaRecords: Array<{
       user_id: string;
       media_type: string;
@@ -350,33 +404,90 @@ export async function syncSpotifyData(
       if (existingId) {
         musicItemMap.set(track.id, existingId);
       } else {
-        newMusicItems.push({
-          source: "spotify",
-          source_item_id: track.id,
-          title: track.name,
-          artist: track.artists?.map((a: any) => a.name).join(", ") || undefined,
-          album: track.album?.name || undefined,
-          genre: track.artists?.map((a: any) => a.name) || undefined,
-          poster_url: track.album?.images?.[0]?.url || undefined,
-          duration_ms: track.duration_ms || undefined,
-        });
+        if (!pendingNewTrackIds.has(track.id)) {
+          newMusicItems.push({
+            source: "spotify",
+            source_item_id: track.id,
+            title: track.name,
+            artist: track.artists?.map((a: any) => a.name).join(", ") || undefined,
+            album: track.album?.name || undefined,
+            genre: track.artists?.map((a: any) => a.name) || undefined,
+            poster_url: track.album?.images?.[0]?.url || undefined,
+            duration_ms: track.duration_ms || undefined,
+          });
+          pendingNewTrackIds.add(track.id);
+        }
       }
     }
+    console.log("[Spotify][Sync] New music items prepared", {
+      newMusicItems: newMusicItems.length,
+      existingMapped: musicItemMap.size,
+    });
 
-    // Step 3: Batch insert new music items
+    // Step 3: Batch upsert new music items (handles duplicates gracefully)
     if (newMusicItems.length > 0) {
+      // First, try to upsert all items
       const { data: insertedMusicItems, error: insertError } = await supabase
         .from("music")
-        .insert(newMusicItems)
+        .upsert(newMusicItems, {
+          onConflict: "source,source_item_id",
+        })
         .select("id, source_item_id");
 
       if (insertError) {
-        console.error("Error batch inserting music items:", insertError);
-        errors += newMusicItems.length;
-      } else {
-        insertedMusicItems?.forEach(item => {
+        console.error("Error batch upserting music items:", insertError);
+      }
+
+      if (insertedMusicItems) {
+        insertedMusicItems.forEach(item => {
+          if (item?.source_item_id) {
+            musicItemMap.set(item.source_item_id, item.id);
+          }
+        });
+      }
+
+      // Always query for all source_item_ids to ensure we have all IDs
+      // This handles cases where upsert partially succeeded or items already existed
+      const sourceIds = Array.from(
+        new Set(newMusicItems.map(item => item.source_item_id))
+      );
+      const BATCH_LIMIT = 50;
+      for (let i = 0; i < sourceIds.length; i += BATCH_LIMIT) {
+        const chunk = sourceIds.slice(i, i + BATCH_LIMIT);
+        const { data: chunkItems, error: chunkError } = await supabase
+          .from("music")
+          .select("id, source_item_id")
+          .eq("source", "spotify")
+          .in("source_item_id", chunk);
+
+        if (chunkError) {
+          console.error("[Spotify][Sync] Error fetching music IDs chunk", {
+            chunkSize: chunk.length,
+            error: chunkError.message,
+          });
+          continue;
+        }
+
+        chunkItems?.forEach(item => {
           musicItemMap.set(item.source_item_id, item.id);
         });
+      }
+
+      const mappedCount = sourceIds.filter(id => musicItemMap.has(id)).length;
+      console.log("[Spotify][Sync] Mapped music items", {
+        totalMapped: mappedCount,
+        requestedCount: sourceIds.length,
+        batches: sourceIds.length > 0 ? Math.ceil(sourceIds.length / BATCH_LIMIT) : 0,
+      });
+
+      // Count errors: items that couldn't be mapped
+      const missingIds = sourceIds.filter(id => !musicItemMap.has(id));
+      if (missingIds.length > 0) {
+        console.warn("[Spotify][Sync] Some music items could not be mapped", {
+          missingCount: missingIds.length,
+          sampleIds: missingIds.slice(0, 5),
+        });
+        errors += missingIds.length;
       }
     }
 
@@ -385,6 +496,10 @@ export async function syncSpotifyData(
       const musicId = musicItemMap.get(track.id);
       if (!musicId) {
         errors++;
+        console.warn("[Spotify][Sync] Missing music ID after insert", {
+          trackId: track.id,
+          trackName: track.name,
+        });
         continue;
       }
 
@@ -404,6 +519,9 @@ export async function syncSpotifyData(
         tags,
       });
     }
+    console.log("[Spotify][Sync] Prepared user_media records", {
+      total: userMediaRecords.length,
+    });
 
     // Step 5: Batch upsert user_media records
     if (userMediaRecords.length > 0) {
@@ -421,13 +539,22 @@ export async function syncSpotifyData(
           errors += batch.length;
         } else {
           tracksImported += batch.length;
+          console.log("[Spotify][Sync] Upserted user_media batch", {
+            batchNumber: i / BATCH_SIZE + 1,
+            batchSize: batch.length,
+            totalImported: tracksImported,
+          });
         }
       }
     }
 
+    console.log("[Spotify][Sync] Completed", {
+      tracksImported,
+      errors,
+    });
     return { tracksImported, errors };
   } catch (error) {
-    console.error("Error syncing Spotify data:", error);
+    console.error("[Spotify][Sync] Unhandled error", error);
     throw error;
   }
 }

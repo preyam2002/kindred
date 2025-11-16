@@ -16,6 +16,7 @@ import {
 } from "@/lib/share";
 import { ShareButtons } from "@/components/share-buttons";
 import { Card } from "@/components/ui/card";
+import { normalizePosterUrl } from "@/lib/utils";
 
 export default function MashPage() {
   const params = useParams();
@@ -240,9 +241,20 @@ export default function MashPage() {
                 >
                   {item.media.poster_url ? (
                     <img
-                      src={item.media.poster_url}
+                      src={normalizePosterUrl(item.media.poster_url) || ""}
                       alt={item.media.title}
                       className="w-full aspect-[2/3] object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = "none";
+                        const parent = target.parentElement;
+                        if (parent && !parent.querySelector(".fallback-placeholder")) {
+                          const fallback = document.createElement("div");
+                          fallback.className = "fallback-placeholder w-full aspect-[2/3] bg-muted flex items-center justify-center";
+                          fallback.innerHTML = '<div class="text-4xl">📚</div>';
+                          parent.appendChild(fallback);
+                        }
+                      }}
                     />
                   ) : (
                     <div className="w-full aspect-[2/3] bg-muted flex items-center justify-center">
@@ -289,9 +301,20 @@ export default function MashPage() {
                 >
                   {rec.media.poster_url ? (
                     <img
-                      src={rec.media.poster_url}
+                      src={normalizePosterUrl(rec.media.poster_url) || ""}
                       alt={rec.media.title}
                       className="w-full aspect-[2/3] object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = "none";
+                        const parent = target.parentElement;
+                        if (parent && !parent.querySelector(".fallback-placeholder")) {
+                          const fallback = document.createElement("div");
+                          fallback.className = "fallback-placeholder w-full aspect-[2/3] bg-muted flex items-center justify-center";
+                          fallback.innerHTML = '<div class="text-4xl">📚</div>';
+                          parent.appendChild(fallback);
+                        }
+                      }}
                     />
                   ) : (
                     <div className="w-full aspect-[2/3] bg-muted flex items-center justify-center">

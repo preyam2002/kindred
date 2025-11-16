@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
-import { syncMALData, refreshMALToken } from "@/lib/integrations/myanimelist";
+import { syncMALData } from "@/lib/integrations/myanimelist";
 import { supabase } from "@/lib/db/supabase";
 
 export async function POST(request: NextRequest) {
@@ -26,50 +26,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!source.access_token) {
+    if (!source.source_user_id) {
       return NextResponse.json(
-        { error: "Invalid access token" },
+        { error: "MyAnimeList username not found" },
         { status: 400 }
       );
     }
 
-    // Check if token is expired and refresh if needed
-    let accessToken = source.access_token;
-    if (source.expires_at && new Date(source.expires_at) < new Date()) {
-      if (!source.refresh_token) {
-        return NextResponse.json(
-          { error: "Token expired and no refresh token available" },
-          { status: 400 }
-        );
-      }
-
-      try {
-        const tokens = await refreshMALToken(source.refresh_token);
-        accessToken = tokens.access_token;
-
-        // Update tokens in database
-        const expiresAt = new Date();
-        expiresAt.setSeconds(expiresAt.getSeconds() + tokens.expires_in);
-
-        await supabase
-          .from("sources")
-          .update({
-            access_token: tokens.access_token,
-            refresh_token: tokens.refresh_token,
-            expires_at: expiresAt.toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", source.id);
-      } catch (error) {
-        return NextResponse.json(
-          { error: "Failed to refresh token. Please reconnect your account." },
-          { status: 401 }
-        );
-      }
-    }
-
-    // Sync data
-    const result = await syncMALData(session.user.id, accessToken);
+    // Sync data (no OAuth token needed for public lists)
+    const result = await syncMALData(session.user.id);
 
     return NextResponse.json({
       success: true,
@@ -86,6 +51,7 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
 
 
 

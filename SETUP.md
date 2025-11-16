@@ -28,11 +28,11 @@ Make sure you have these set in your `.env.local`:
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 
-# Anthropic (for AI features)
-ANTHROPIC_API_KEY=your_anthropic_key
+# OpenAI (for AI features)
+OPENAI_API_KEY=your_openai_key
 
 # NextAuth
-NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_URL=http://localhost:5000
 NEXTAUTH_SECRET=your_secret_key
 
 # OAuth Providers (optional)
@@ -53,23 +53,27 @@ SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
 ## Features Implemented
 
 ### 1. AI Conversational Assistant (/chat)
+
 - Chat with AI about your media taste
 - Persistent conversation history
 - Context-aware responses based on your library
 
 ### 2. Viral Sharing Engine
+
 - Share compatibility matches on social media
 - Track shares, clicks, and conversions
 - Viral coefficient (K-factor) measurement
 - Analytics dashboard at /analytics
 
 ### 3. Waitlist System (/waitlist)
+
 - Referral-based queue jumping
 - Admin dashboard at /waitlist/admin
 - Public leaderboard at /waitlist/leaderboard
 - Gamification to drive signups
 
 ### 4. Web Scrapers (NEW!)
+
 - Goodreads: Public profile scraping (no auth needed)
 - Letterboxd: Public profile scraping (no auth needed)
 - APIs: GET /api/scrape/goodreads?username=X

@@ -17,8 +17,10 @@ import {
   Settings,
   ExternalLink,
   Search,
+  Star,
 } from "lucide-react";
 import Image from "next/image";
+import { normalizePosterUrl } from "@/lib/utils";
 
 interface Recommendation {
   media: {
@@ -42,6 +44,22 @@ interface DashboardData {
       manga: number;
       movies: number;
       music: number;
+      averageRatings: {
+        overall: number | null;
+        books: number | null;
+        anime: number | null;
+        manga: number | null;
+        movies: number | null;
+        music: number | null;
+      };
+      ratedCounts: {
+        overall: number;
+        books: number;
+        anime: number;
+        manga: number;
+        movies: number;
+        music: number;
+      };
     };
     integrations: number;
     totalMatches: number;
@@ -155,6 +173,17 @@ export default function DashboardPage() {
   const { stats, recentMatches, suggestedMatches, recentActivity, connectedIntegrations } =
     dashboardData;
 
+  const ratingSummary = stats.media.averageRatings;
+  const ratedCounts = stats.media.ratedCounts;
+  const ratingCards = [
+    { label: "Overall", value: ratingSummary.overall, count: ratedCounts.overall, type: "all" },
+    { label: "Books", value: ratingSummary.books, count: ratedCounts.books, type: "book" },
+    { label: "Anime", value: ratingSummary.anime, count: ratedCounts.anime, type: "anime" },
+    { label: "Manga", value: ratingSummary.manga, count: ratedCounts.manga, type: "manga" },
+    { label: "Movies", value: ratingSummary.movies, count: ratedCounts.movies, type: "movie" },
+    { label: "Music", value: ratingSummary.music, count: ratedCounts.music, type: "music" },
+  ];
+
   return (
     <div className="container mx-auto px-6 py-12 max-w-6xl">
         {/* Welcome Section */}
@@ -217,16 +246,55 @@ export default function DashboardPage() {
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {[
-              { label: "Books", count: stats.media.books, icon: BookOpen },
-              { label: "Anime", count: stats.media.anime, icon: Tv },
-              { label: "Manga", count: stats.media.manga, icon: BookOpen },
-              { label: "Movies", count: stats.media.movies, icon: Film },
-              { label: "Music", count: stats.media.music, icon: Music },
-            ].map(({ label, count, icon: Icon }) => (
-              <div key={label} className="text-center">
+              { label: "Books", count: stats.media.books, icon: BookOpen, type: "book" },
+              { label: "Anime", count: stats.media.anime, icon: Tv, type: "anime" },
+              { label: "Manga", count: stats.media.manga, icon: BookOpen, type: "manga" },
+              { label: "Movies", count: stats.media.movies, icon: Film, type: "movie" },
+              { label: "Music", count: stats.media.music, icon: Music, type: "music" },
+            ].map(({ label, count, icon: Icon, type }) => (
+              <Link
+                key={label}
+                href={`/library?type=${type}`}
+                className="text-center border border-border rounded-lg p-4 hover:border-primary/50 hover:bg-accent transition-colors cursor-pointer"
+              >
                 <Icon className="w-6 h-6 mx-auto mb-2 text-muted-foreground" />
                 <div className="text-2xl font-bold">{count}</div>
                 <div className="text-xs text-muted-foreground">{label}</div>
+              </Link>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Rating Overview */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="border border-border rounded-lg p-6 bg-card mb-12"
+        >
+          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <Star className="w-5 h-5" />
+            Average Ratings
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {ratingCards.map(({ label, value, count, type }) => (
+              <div
+                key={label}
+                className="border border-border rounded-lg p-4 bg-background/60 flex flex-col gap-2"
+              >
+                <div className="text-xs text-muted-foreground uppercase tracking-wide">
+                  {label}
+                </div>
+                <div className="text-2xl font-bold">
+                  {value !== null ? `${value.toFixed(1)}/10` : "—"}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {count > 0
+                    ? `${count} ${count === 1 ? "rating" : "ratings"}`
+                    : type === "music"
+                      ? "Ratings not available"
+                      : "No ratings yet"}
+                </div>
               </div>
             ))}
           </div>
@@ -403,9 +471,20 @@ export default function DashboardPage() {
                 >
                   {rec.media.poster_url ? (
                     <img
-                      src={rec.media.poster_url}
+                      src={normalizePosterUrl(rec.media.poster_url) || ""}
                       alt={rec.media.title}
                       className="w-full aspect-[2/3] object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = "none";
+                        const parent = target.parentElement;
+                        if (parent && !parent.querySelector(".fallback-placeholder")) {
+                          const fallback = document.createElement("div");
+                          fallback.className = "fallback-placeholder w-full aspect-[2/3] bg-muted flex items-center justify-center";
+                          fallback.innerHTML = `<div class="text-4xl">${rec.media.type === "book" ? "📚" : rec.media.type === "movie" ? "🎬" : rec.media.type === "music" ? "🎵" : "📺"}</div>`;
+                          parent.appendChild(fallback);
+                        }
+                      }}
                     />
                   ) : (
                     <div className="w-full aspect-[2/3] bg-muted flex items-center justify-center">
@@ -462,9 +541,20 @@ export default function DashboardPage() {
                 >
                   {activity.media_items?.poster_url ? (
                     <img
-                      src={activity.media_items.poster_url}
+                      src={normalizePosterUrl(activity.media_items.poster_url) || ""}
                       alt={activity.media_items.title}
                       className="w-full aspect-[2/3] object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = "none";
+                        const parent = target.parentElement;
+                        if (parent && !parent.querySelector(".fallback-placeholder")) {
+                          const fallback = document.createElement("div");
+                          fallback.className = "fallback-placeholder w-full aspect-[2/3] bg-muted flex items-center justify-center";
+                          fallback.innerHTML = '<div class="text-4xl">📚</div>';
+                          parent.appendChild(fallback);
+                        }
+                      }}
                     />
                   ) : (
                     <div className="w-full aspect-[2/3] bg-muted flex items-center justify-center">

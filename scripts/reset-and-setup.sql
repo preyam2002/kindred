@@ -22,10 +22,23 @@ DROP TABLE IF EXISTS movies CASCADE;
 DROP TABLE IF EXISTS manga CASCADE;
 DROP TABLE IF EXISTS anime CASCADE;
 DROP TABLE IF EXISTS books CASCADE;
+DROP TABLE IF EXISTS messages CASCADE;
+DROP TABLE IF EXISTS conversations CASCADE;
+DROP TABLE IF EXISTS share_clicks CASCADE;
+DROP TABLE IF EXISTS shares CASCADE;
+DROP TABLE IF EXISTS referrals CASCADE;
+DROP TABLE IF EXISTS viral_metrics CASCADE;
+DROP TABLE IF EXISTS waitlist_settings CASCADE;
+DROP TABLE IF EXISTS waitlist CASCADE;
 DROP TABLE IF EXISTS sources CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
 DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
+DROP FUNCTION IF EXISTS update_conversation_on_message() CASCADE;
+DROP FUNCTION IF EXISTS generate_waitlist_referral_code(VARCHAR) CASCADE;
+DROP FUNCTION IF EXISTS update_waitlist_referral_counts() CASCADE;
+DROP FUNCTION IF EXISTS recalculate_waitlist_positions() CASCADE;
+DROP FUNCTION IF EXISTS generate_referral_code(UUID) CASCADE;
 
 -- ============================================================================
 -- STEP 2: CREATE SCHEMA (from schema.sql)
@@ -169,6 +182,91 @@ CREATE TABLE IF NOT EXISTS recommendations (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Conversations table (chat sessions)
+CREATE TABLE IF NOT EXISTS conversations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  title VARCHAR(255) NOT NULL DEFAULT 'New Chat',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Messages table (chat messages within a conversation)
+CREATE TABLE IF NOT EXISTS messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE NOT NULL,
+  role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'assistant')),
+  content TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Waitlist table
+CREATE TABLE IF NOT EXISTS waitlist (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email VARCHAR(255) UNIQUE NOT NULL,
+  name VARCHAR(255),
+  referral_code VARCHAR(50) UNIQUE NOT NULL,
+  referred_by VARCHAR(50),
+  position INTEGER NOT NULL,
+  referral_count INTEGER DEFAULT 0,
+  status VARCHAR(50) NOT NULL CHECK (status IN ('pending', 'approved', 'rejected', 'converted')) DEFAULT 'pending',
+  invited_at TIMESTAMP WITH TIME ZONE,
+  converted_at TIMESTAMP WITH TIME ZONE,
+  metadata JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Waitlist settings table
+CREATE TABLE IF NOT EXISTS waitlist_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  setting_key VARCHAR(100) UNIQUE NOT NULL,
+  setting_value JSONB NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Viral tracking tables
+CREATE TABLE IF NOT EXISTS shares (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  share_type VARCHAR(50) NOT NULL CHECK (share_type IN ('match', 'profile', 'wrapped', 'challenge')),
+  platform VARCHAR(50) NOT NULL CHECK (platform IN ('twitter', 'facebook', 'linkedin', 'instagram', 'copy_link', 'other')),
+  metadata JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS referrals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  referrer_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  referral_code VARCHAR(50) UNIQUE NOT NULL,
+  referred_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  clicked_at TIMESTAMP WITH TIME ZONE,
+  converted_at TIMESTAMP WITH TIME ZONE,
+  metadata JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS share_clicks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  share_id UUID REFERENCES shares(id) ON DELETE CASCADE,
+  referral_code VARCHAR(50),
+  ip_address VARCHAR(50),
+  user_agent TEXT,
+  clicked_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS viral_metrics (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  date DATE NOT NULL UNIQUE,
+  total_shares INTEGER DEFAULT 0,
+  total_clicks INTEGER DEFAULT 0,
+  total_conversions INTEGER DEFAULT 0,
+  k_factor DECIMAL(5,2),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_sources_user_id ON sources(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_media_user_id ON user_media(user_id);
@@ -180,6 +278,24 @@ CREATE INDEX IF NOT EXISTS idx_anime_source ON anime(source);
 CREATE INDEX IF NOT EXISTS idx_manga_source ON manga(source);
 CREATE INDEX IF NOT EXISTS idx_movies_source ON movies(source);
 CREATE INDEX IF NOT EXISTS idx_music_source ON music(source);
+CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(conversation_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_waitlist_email ON waitlist(email);
+CREATE INDEX IF NOT EXISTS idx_waitlist_referral_code ON waitlist(referral_code);
+CREATE INDEX IF NOT EXISTS idx_waitlist_referred_by ON waitlist(referred_by);
+CREATE INDEX IF NOT EXISTS idx_waitlist_position ON waitlist(position);
+CREATE INDEX IF NOT EXISTS idx_waitlist_status ON waitlist(status);
+CREATE INDEX IF NOT EXISTS idx_waitlist_created_at ON waitlist(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_shares_user_id ON shares(user_id);
+CREATE INDEX IF NOT EXISTS idx_shares_created_at ON shares(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_shares_type ON shares(share_type);
+CREATE INDEX IF NOT EXISTS idx_referrals_referrer_id ON referrals(referrer_id);
+CREATE INDEX IF NOT EXISTS idx_referrals_code ON referrals(referral_code);
+CREATE INDEX IF NOT EXISTS idx_referrals_referred_user ON referrals(referred_user_id);
+CREATE INDEX IF NOT EXISTS idx_share_clicks_share_id ON share_clicks(share_id);
+CREATE INDEX IF NOT EXISTS idx_viral_metrics_date ON viral_metrics(date DESC);
 
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -217,6 +333,130 @@ CREATE TRIGGER update_user_media_updated_at BEFORE UPDATE ON user_media
 
 CREATE TRIGGER update_matches_updated_at BEFORE UPDATE ON matches
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_conversations_updated_at BEFORE UPDATE ON conversations
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_waitlist_updated_at BEFORE UPDATE ON waitlist
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_waitlist_settings_updated_at BEFORE UPDATE ON waitlist_settings
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_viral_metrics_updated_at BEFORE UPDATE ON viral_metrics
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Functions specific to waitlist and viral features
+CREATE OR REPLACE FUNCTION generate_waitlist_referral_code(email_param VARCHAR)
+RETURNS VARCHAR(50) AS $$
+DECLARE
+  code VARCHAR(50);
+  attempts INTEGER := 0;
+  max_attempts INTEGER := 10;
+BEGIN
+  LOOP
+    code := upper(substring(md5(random()::text || email_param) from 1 for 6));
+
+    IF NOT EXISTS (SELECT 1 FROM waitlist WHERE referral_code = code) THEN
+      RETURN code;
+    END IF;
+
+    attempts := attempts + 1;
+    IF attempts >= max_attempts THEN
+      RAISE EXCEPTION 'Failed to generate unique waitlist referral code after % attempts', max_attempts;
+    END IF;
+  END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION update_waitlist_referral_counts()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.referred_by IS NOT NULL THEN
+    UPDATE waitlist
+    SET referral_count = referral_count + 1
+    WHERE referral_code = NEW.referred_by;
+
+    UPDATE waitlist
+    SET position = (
+      SELECT COUNT(*) + 1
+      FROM waitlist w2
+      WHERE w2.referral_count > waitlist.referral_count
+        OR (w2.referral_count = waitlist.referral_count AND w2.created_at < waitlist.created_at)
+    )
+    WHERE referral_code = NEW.referred_by;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION recalculate_waitlist_positions()
+RETURNS void AS $$
+BEGIN
+  UPDATE waitlist
+  SET position = ranked.new_position
+  FROM (
+    SELECT
+      id,
+      ROW_NUMBER() OVER (
+        ORDER BY
+          referral_count DESC,
+          created_at ASC
+      ) as new_position
+    FROM waitlist
+    WHERE status = 'pending'
+  ) ranked
+  WHERE waitlist.id = ranked.id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION generate_referral_code(user_id_param UUID)
+RETURNS VARCHAR(50) AS $$
+DECLARE
+  code VARCHAR(50);
+  attempts INTEGER := 0;
+  max_attempts INTEGER := 10;
+BEGIN
+  LOOP
+    code := upper(substring(md5(random()::text || user_id_param::text) from 1 for 8));
+
+    IF NOT EXISTS (SELECT 1 FROM referrals WHERE referral_code = code) THEN
+      RETURN code;
+    END IF;
+
+    attempts := attempts + 1;
+    IF attempts >= max_attempts THEN
+      RAISE EXCEPTION 'Failed to generate unique referral code after % attempts', max_attempts;
+    END IF;
+  END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION update_conversation_on_message()
+RETURNS TRIGGER AS $$
+BEGIN
+  UPDATE conversations
+  SET updated_at = NOW()
+  WHERE id = NEW.conversation_id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Additional triggers
+CREATE TRIGGER update_conversation_timestamp AFTER INSERT ON messages
+    FOR EACH ROW EXECUTE FUNCTION update_conversation_on_message();
+
+CREATE TRIGGER update_referral_counts AFTER INSERT ON waitlist
+    FOR EACH ROW EXECUTE FUNCTION update_waitlist_referral_counts();
+
+-- Seed default waitlist settings
+INSERT INTO waitlist_settings (setting_key, setting_value)
+VALUES
+  ('batch_invite_size', '50'::jsonb),
+  ('auto_invite_enabled', 'false'::jsonb),
+  ('invite_day', '"friday"'::jsonb)
+ON CONFLICT (setting_key) DO NOTHING;
 
 -- ============================================================================
 -- STEP 3: SET UP RLS POLICIES (from setup_rls_policies.sql)
@@ -257,6 +497,14 @@ ALTER TABLE music ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_media ENABLE ROW LEVEL SECURITY;
 ALTER TABLE matches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recommendations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE waitlist ENABLE ROW LEVEL SECURITY;
+ALTER TABLE waitlist_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE shares ENABLE ROW LEVEL SECURITY;
+ALTER TABLE referrals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE share_clicks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE viral_metrics ENABLE ROW LEVEL SECURITY;
 
 -- Sources: Users can manage their own sources
 DROP POLICY IF EXISTS "Users can view all sources" ON sources;
@@ -444,9 +692,191 @@ CREATE POLICY "Authenticated users can insert recommendations"
   FOR INSERT
   WITH CHECK (true);
 
+-- Conversations
+DROP POLICY IF EXISTS "Conversations are viewable by everyone" ON conversations;
+CREATE POLICY "Conversations are viewable by everyone"
+  ON conversations
+  FOR SELECT
+  USING (true);
+
+DROP POLICY IF EXISTS "Authenticated users can insert conversations" ON conversations;
+CREATE POLICY "Authenticated users can insert conversations"
+  ON conversations
+  FOR INSERT
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Authenticated users can update conversations" ON conversations;
+CREATE POLICY "Authenticated users can update conversations"
+  ON conversations
+  FOR UPDATE
+  USING (true)
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Authenticated users can delete conversations" ON conversations;
+CREATE POLICY "Authenticated users can delete conversations"
+  ON conversations
+  FOR DELETE
+  USING (true);
+
+-- Messages
+DROP POLICY IF EXISTS "Messages are viewable by everyone" ON messages;
+CREATE POLICY "Messages are viewable by everyone"
+  ON messages
+  FOR SELECT
+  USING (true);
+
+DROP POLICY IF EXISTS "Authenticated users can insert messages" ON messages;
+CREATE POLICY "Authenticated users can insert messages"
+  ON messages
+  FOR INSERT
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Authenticated users can update messages" ON messages;
+CREATE POLICY "Authenticated users can update messages"
+  ON messages
+  FOR UPDATE
+  USING (true)
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Authenticated users can delete messages" ON messages;
+CREATE POLICY "Authenticated users can delete messages"
+  ON messages
+  FOR DELETE
+  USING (true);
+
+-- Waitlist
+DROP POLICY IF EXISTS "Waitlist is viewable by everyone" ON waitlist;
+CREATE POLICY "Waitlist is viewable by everyone"
+  ON waitlist
+  FOR SELECT
+  USING (true);
+
+DROP POLICY IF EXISTS "Authenticated users can insert waitlist" ON waitlist;
+CREATE POLICY "Authenticated users can insert waitlist"
+  ON waitlist
+  FOR INSERT
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Authenticated users can update waitlist" ON waitlist;
+CREATE POLICY "Authenticated users can update waitlist"
+  ON waitlist
+  FOR UPDATE
+  USING (true)
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Authenticated users can delete waitlist" ON waitlist;
+CREATE POLICY "Authenticated users can delete waitlist"
+  ON waitlist
+  FOR DELETE
+  USING (true);
+
+-- Waitlist settings
+DROP POLICY IF EXISTS "Waitlist settings viewable by everyone" ON waitlist_settings;
+CREATE POLICY "Waitlist settings viewable by everyone"
+  ON waitlist_settings
+  FOR SELECT
+  USING (true);
+
+DROP POLICY IF EXISTS "Authenticated users can modify waitlist settings" ON waitlist_settings;
+CREATE POLICY "Authenticated users can modify waitlist settings"
+  ON waitlist_settings
+  FOR ALL
+  USING (true)
+  WITH CHECK (true);
+
+-- Viral tracking tables
+DROP POLICY IF EXISTS "Shares are viewable by everyone" ON shares;
+CREATE POLICY "Shares are viewable by everyone"
+  ON shares
+  FOR SELECT
+  USING (true);
+
+DROP POLICY IF EXISTS "Authenticated users can insert shares" ON shares;
+CREATE POLICY "Authenticated users can insert shares"
+  ON shares
+  FOR INSERT
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Authenticated users can update shares" ON shares;
+CREATE POLICY "Authenticated users can update shares"
+  ON shares
+  FOR UPDATE
+  USING (true)
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Authenticated users can delete shares" ON shares;
+CREATE POLICY "Authenticated users can delete shares"
+  ON shares
+  FOR DELETE
+  USING (true);
+
+DROP POLICY IF EXISTS "Referrals are viewable by everyone" ON referrals;
+CREATE POLICY "Referrals are viewable by everyone"
+  ON referrals
+  FOR SELECT
+  USING (true);
+
+DROP POLICY IF EXISTS "Authenticated users can insert referrals" ON referrals;
+CREATE POLICY "Authenticated users can insert referrals"
+  ON referrals
+  FOR INSERT
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Authenticated users can update referrals" ON referrals;
+CREATE POLICY "Authenticated users can update referrals"
+  ON referrals
+  FOR UPDATE
+  USING (true)
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Authenticated users can delete referrals" ON referrals;
+CREATE POLICY "Authenticated users can delete referrals"
+  ON referrals
+  FOR DELETE
+  USING (true);
+
+DROP POLICY IF EXISTS "Share clicks are viewable by everyone" ON share_clicks;
+CREATE POLICY "Share clicks are viewable by everyone"
+  ON share_clicks
+  FOR SELECT
+  USING (true);
+
+DROP POLICY IF EXISTS "Authenticated users can insert share clicks" ON share_clicks;
+CREATE POLICY "Authenticated users can insert share clicks"
+  ON share_clicks
+  FOR INSERT
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Authenticated users can update share clicks" ON share_clicks;
+CREATE POLICY "Authenticated users can update share clicks"
+  ON share_clicks
+  FOR UPDATE
+  USING (true)
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Authenticated users can delete share clicks" ON share_clicks;
+CREATE POLICY "Authenticated users can delete share clicks"
+  ON share_clicks
+  FOR DELETE
+  USING (true);
+
+DROP POLICY IF EXISTS "Viral metrics are viewable by everyone" ON viral_metrics;
+CREATE POLICY "Viral metrics are viewable by everyone"
+  ON viral_metrics
+  FOR SELECT
+  USING (true);
+
+DROP POLICY IF EXISTS "Authenticated users can modify viral metrics" ON viral_metrics;
+CREATE POLICY "Authenticated users can modify viral metrics"
+  ON viral_metrics
+  FOR ALL
+  USING (true)
+  WITH CHECK (true);
+
 -- ============================================================================
 -- DONE! Your database is now reset and ready for development.
 -- ============================================================================
+
 
 
 

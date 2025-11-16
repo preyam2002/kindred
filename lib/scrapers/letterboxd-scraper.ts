@@ -52,50 +52,110 @@ export async function scrapeLetterboxdProfile(
 
       // Extract display name from first page
       if (page === 1) {
-        displayName = $(".profile-person h1").text().trim() || username;
+        // Try multiple selectors for display name
+        displayName =
+          $(".profile-person h1").text().trim() ||
+          $("h1.section-heading").text().trim() ||
+          username;
       }
 
-      // Parse film entries
-      const filmItems = $("li.poster-container");
+      // Parse film entries - Letterboxd now uses div.react-component with data attributes
+      const filmItems = $(
+        "div.react-component[data-component-class='LazyPoster']"
+      );
 
       if (filmItems.length === 0) {
-        hasMore = false;
-        break;
-      }
+        // Fallback to old structure if new one doesn't work
+        const oldFilmItems = $("li.poster-container");
+        if (oldFilmItems.length === 0) {
+          hasMore = false;
+          break;
+        }
 
-      filmItems.each((_, element) => {
-        const $film = $(element);
-
-        // Get film slug (ID)
-        const filmLink = $film.find("div.film-poster").attr("data-film-slug");
-        if (!filmLink) return;
-
-        // Get title
-        const title = $film.find("img").attr("alt") || "";
-
-        // Get poster URL
-        const posterUrl = $film.find("img").attr("src");
-
-        // Get rating (1-5 stars, or half stars)
-        const ratingClass = $film.find(".rating").attr("class");
-        let rating: number | undefined;
-        if (ratingClass) {
-          const ratingMatch = ratingClass.match(/rated-(\d+)/);
-          if (ratingMatch) {
-            // Letterboxd uses 1-10 scale in CSS (2 = 1 star, 10 = 5 stars)
-            rating = parseInt(ratingMatch[1]) / 2;
+        // Use old parsing logic as fallback
+        oldFilmItems.each((_, element) => {
+          const $film = $(element);
+          const filmLink = $film.find("div.film-poster").attr("data-film-slug");
+          if (!filmLink) return;
+          const title = $film.find("img").attr("alt") || "";
+          const posterUrl = $film.find("img").attr("src");
+          const ratingClass = $film.find(".rating").attr("class");
+          let rating: number | undefined;
+          if (ratingClass) {
+            const ratingMatch = ratingClass.match(/rated-(\d+)/);
+            if (ratingMatch) {
+              rating = parseInt(ratingMatch[1]) / 2;
+            }
           }
-        }
+          if (title) {
+            films.push({
+              title,
+              filmId: filmLink,
+              rating,
+              posterUrl,
+            });
+          }
+        });
+      } else {
+        // New structure parsing
+        // Films are in list items, with react-component and poster-viewingdata as siblings
+        filmItems.each((_, element) => {
+          const $film = $(element);
 
-        if (title) {
-          films.push({
-            title,
-            filmId: filmLink,
-            rating,
-            posterUrl,
-          });
-        }
-      });
+          // Get film slug (ID) from data attribute
+          const filmSlug = $film.attr("data-item-slug");
+          if (!filmSlug) return;
+
+          // Get title from data attribute (includes year if available)
+          const fullTitle = $film.attr("data-item-name") || "";
+
+          // Extract year from title if present (e.g., "Film Name (2024)")
+          let title = fullTitle;
+          let year: number | undefined;
+          const yearMatch = fullTitle.match(/\((\d{4})\)$/);
+          if (yearMatch) {
+            year = parseInt(yearMatch[1]);
+            title = fullTitle.replace(/\s*\(\d{4}\)$/, "").trim();
+          }
+
+          // Get poster URL from img tag
+          const posterUrl =
+            $film.find("img.image").attr("src") ||
+            $film.find("img").attr("src");
+
+          // Get rating from sibling poster-viewingdata element
+          // The rating is in a <p class="poster-viewingdata"> that follows the react-component
+          // They're both children of the same parent (usually an li.griditem)
+          let rating: number | undefined;
+          // Try next sibling first (most common case)
+          let $viewingData = $film.next("p.poster-viewingdata");
+          // If not found, look in parent (they're siblings in the same parent)
+          if ($viewingData.length === 0) {
+            $viewingData = $film.parent().find("p.poster-viewingdata").first();
+          }
+
+          if ($viewingData.length > 0) {
+            const ratingClass = $viewingData.find(".rating").attr("class");
+            if (ratingClass) {
+              const ratingMatch = ratingClass.match(/rated-(\d+)/);
+              if (ratingMatch) {
+                // Letterboxd uses 1-10 scale in CSS (2 = 1 star, 10 = 5 stars)
+                rating = parseInt(ratingMatch[1]) / 2;
+              }
+            }
+          }
+
+          if (title) {
+            films.push({
+              title,
+              year,
+              filmId: filmSlug,
+              rating,
+              posterUrl,
+            });
+          }
+        });
+      }
 
       page++;
     }
@@ -121,9 +181,7 @@ export async function scrapeLetterboxdProfile(
             .attr("href")
             ?.replace("/film/", "")
             ?.replace("/", "");
-          const watchedDate = $row
-            .find("td.td-day a time")
-            .attr("datetime");
+          const watchedDate = $row.find("td.td-day a time").attr("datetime");
 
           if (filmSlug && watchedDate) {
             const film = films.find((f) => f.filmId === filmSlug);

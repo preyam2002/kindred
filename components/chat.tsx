@@ -15,9 +15,16 @@ interface Message {
 interface ChatProps {
   conversationId?: string;
   initialMessages?: Message[];
+  disabled?: boolean;
+  errorMessage?: string | null;
 }
 
-export function Chat({ conversationId, initialMessages = [] }: ChatProps) {
+export function Chat({
+  conversationId,
+  initialMessages = [],
+  disabled = false,
+  errorMessage: externalError,
+}: ChatProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -26,6 +33,11 @@ export function Chat({ conversationId, initialMessages = [] }: ChatProps) {
   );
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(externalError || null);
+
+  useEffect(() => {
+    setErrorMessage(externalError || null);
+  }, [externalError]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -35,8 +47,48 @@ export function Chat({ conversationId, initialMessages = [] }: ChatProps) {
     scrollToBottom();
   }, [messages]);
 
+  // Load messages when conversationId changes
+  useEffect(() => {
+    async function loadMessages() {
+      if (!conversationId) {
+        setMessages([]);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/chat?conversationId=${conversationId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setMessages(data.messages || []);
+          setCurrentConversationId(conversationId);
+          setErrorMessage(null);
+        } else {
+          const data = await response.json().catch(() => null);
+          if (data?.missingTables) {
+            setErrorMessage(data.error);
+          } else {
+            setErrorMessage(data?.error || "Failed to load messages.");
+          }
+          setMessages([]);
+        }
+      } catch (error) {
+        console.error("Error loading messages:", error);
+        setMessages([]);
+        setErrorMessage("Failed to load messages. Check the console for details.");
+      }
+    }
+
+    if (!disabled) {
+      loadMessages();
+    }
+  }, [conversationId, disabled]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (disabled || errorMessage) {
+      return;
+    }
 
     if (!input.trim() || isLoading) return;
 
@@ -66,7 +118,45 @@ export function Chat({ conversationId, initialMessages = [] }: ChatProps) {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to send message");
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: "Unknown error" }));
+
+        const isQuotaError =
+          response.status === 429 ||
+          errorData?.code === "insufficient_quota" ||
+          errorData?.type === "insufficient_quota" ||
+          errorData?.error?.type === "insufficient_quota" ||
+          errorData?.error?.code === "insufficient_quota";
+
+        if (isQuotaError) {
+          const quotaMessage =
+            (typeof errorData?.error === "string" && errorData.error) ||
+            errorData?.error?.message ||
+            "We hit the current AI usage limit. Please try again in a bit or review billing limits.";
+
+          const quotaResponse: Message = {
+            id: `quota-${Date.now()}`,
+            role: "assistant",
+            content: quotaMessage,
+            created_at: new Date().toISOString(),
+          };
+
+          setMessages((prev) => [...prev, quotaResponse]);
+          return;
+        }
+
+        if (errorData?.missingTables) {
+          setErrorMessage(errorData.error);
+        }
+
+        const errorDetail =
+          (typeof errorData?.error === "string" && errorData.error) ||
+          errorData?.error?.message ||
+          errorData?.message ||
+          `Failed to send message (${response.status})`;
+
+        throw new Error(errorDetail);
       }
 
       const data = await response.json();
@@ -104,7 +194,21 @@ export function Chat({ conversationId, initialMessages = [] }: ChatProps) {
     <div className="flex flex-col h-full">
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.length === 0 && (
+        {errorMessage ? (
+          <div className="flex items-center justify-center h-full text-center">
+            <div className="space-y-3 max-w-md">
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                Chat setup required
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">
+                {errorMessage}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-500">
+                Run the SQL migration at <code className="font-mono">lib/db/migrations/add_conversations_and_messages.sql</code> in your Supabase project, then reload the page.
+              </p>
+            </div>
+          </div>
+        ) : messages.length === 0 && !isLoading ? (
           <div className="flex items-center justify-center h-full text-center">
             <div className="space-y-2">
               <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
@@ -125,43 +229,45 @@ export function Chat({ conversationId, initialMessages = [] }: ChatProps) {
               </div>
             </div>
           </div>
-        )}
-
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${
-              message.role === "user" ? "justify-end" : "justify-start"
-            }`}
-          >
-            <Card
-              className={`max-w-[80%] p-4 ${
-                message.role === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-card"
-              }`}
-            >
-              <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-            </Card>
-          </div>
-        ))}
-
-        {isLoading && (
-          <div className="flex justify-start">
-            <Card className="max-w-[80%] p-4 bg-card">
-              <div className="flex space-x-2">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                <div
-                  className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                  style={{ animationDelay: "0.1s" }}
-                ></div>
-                <div
-                  className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                  style={{ animationDelay: "0.2s" }}
-                ></div>
+        ) : (
+          <>
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${
+                  message.role === "user" ? "justify-end" : "justify-start"
+                }`}
+              >
+                <Card
+                  className={`max-w-[80%] p-4 ${
+                    message.role === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-card"
+                  }`}
+                >
+                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                </Card>
               </div>
-            </Card>
-          </div>
+            ))}
+
+            {isLoading && !errorMessage && (
+              <div className="flex justify-start">
+                <Card className="max-w-[80%] p-4 bg-card">
+                  <div className="flex space-x-2">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                    <div
+                      className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                      style={{ animationDelay: "0.1s" }}
+                    ></div>
+                    <div
+                      className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                      style={{ animationDelay: "0.2s" }}
+                    ></div>
+                  </div>
+                </Card>
+              </div>
+            )}
+          </>
         )}
 
         <div ref={messagesEndRef} />
@@ -176,10 +282,15 @@ export function Chat({ conversationId, initialMessages = [] }: ChatProps) {
             placeholder="Ask me anything..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            disabled={isLoading}
+            disabled={isLoading || disabled || Boolean(errorMessage)}
             className="flex-1"
           />
-          <Button type="submit" disabled={isLoading || !input.trim()}>
+          <Button
+            type="submit"
+            disabled={
+              isLoading || disabled || Boolean(errorMessage) || !input.trim()
+            }
+          >
             Send
           </Button>
         </form>

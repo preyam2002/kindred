@@ -3,6 +3,10 @@ import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { syncSpotifyData, refreshSpotifyToken } from "@/lib/integrations/spotify";
 import { syncMALData } from "@/lib/integrations/myanimelist";
 import { supabase } from "@/lib/db/supabase";
+import { scrapeGoodreadsProfile } from "@/lib/scrapers/goodreads-scraper";
+import { importGoodreadsScraped } from "@/lib/integrations/goodreads";
+import { scrapeLetterboxdProfile } from "@/lib/scrapers/letterboxd-scraper";
+import { importLetterboxdScraped } from "@/lib/integrations/letterboxd";
 
 // Route handler that delegates to specific integration sync handlers
 export async function POST(
@@ -19,45 +23,162 @@ export async function POST(
   // Delegate to specific integration sync logic
   switch (source) {
     case "goodreads": {
-      // For Goodreads, sync means re-upload CSV - redirect to upload endpoint
-      return NextResponse.json(
-        { error: "Please use the upload feature to sync Goodreads data" },
-        { status: 400 }
+      const { data: goodreadsSource, error: goodreadsError } = await supabase
+        .from("sources")
+        .select("id, source_user_id, access_token")
+        .eq("user_id", session.user.id)
+        .eq("source_name", "goodreads")
+        .single();
+
+      if (goodreadsError || !goodreadsSource) {
+        return NextResponse.json(
+          { error: "Goodreads not connected" },
+          { status: 404 }
+        );
+      }
+
+      const identifier = extractGoodreadsIdentifier(
+        goodreadsSource.source_user_id || goodreadsSource.access_token
       );
+
+      if (!identifier) {
+        return NextResponse.json(
+          {
+            error:
+              "Missing Goodreads profile reference. Please re-upload a CSV or scrape your profile to enable syncing.",
+          },
+          { status: 400 }
+        );
+      }
+
+      try {
+        const profile = await scrapeGoodreadsProfile(identifier);
+        const profileUrl =
+          goodreadsSource.source_user_id ||
+          goodreadsSource.access_token ||
+          `https://www.goodreads.com/user/show/${identifier}`;
+        const result = await importGoodreadsScraped(
+          session.user.id,
+          profile,
+          profileUrl
+        );
+
+        return NextResponse.json({
+          success: true,
+          message: `Synced ${result.imported} books${
+            result.errors > 0 ? ` (${result.errors} errors)` : ""
+          }`,
+          imported: result.imported,
+          errors: result.errors,
+        });
+      } catch (error: any) {
+        console.error("Goodreads sync failed:", error);
+        return NextResponse.json(
+          {
+            error:
+              error?.message ||
+              "Failed to sync Goodreads data. Please try again.",
+          },
+          { status: 500 }
+        );
+      }
     }
     case "letterboxd": {
-      // For Letterboxd, sync means re-upload CSV - redirect to upload endpoint
-      return NextResponse.json(
-        { error: "Please use the upload feature to sync Letterboxd data" },
-        { status: 400 }
+      const { data: letterboxdSource, error: letterboxdError } = await supabase
+        .from("sources")
+        .select("id, source_user_id, access_token")
+        .eq("user_id", session.user.id)
+        .eq("source_name", "letterboxd")
+        .single();
+
+      if (letterboxdError || !letterboxdSource) {
+        return NextResponse.json(
+          { error: "Letterboxd not connected" },
+          { status: 404 }
+        );
+      }
+
+      const username = extractLetterboxdUsername(
+        letterboxdSource.source_user_id || letterboxdSource.access_token
       );
+
+      if (!username) {
+        return NextResponse.json(
+          {
+            error:
+              "Missing Letterboxd username. Please re-upload a CSV or scrape your profile to enable syncing.",
+          },
+          { status: 400 }
+        );
+      }
+
+      try {
+        const profile = await scrapeLetterboxdProfile(username);
+        const profileUrl =
+          letterboxdSource.source_user_id ||
+          letterboxdSource.access_token ||
+          `https://letterboxd.com/${username}/`;
+        const result = await importLetterboxdScraped(
+          session.user.id,
+          profile,
+          profileUrl
+        );
+
+        return NextResponse.json({
+          success: true,
+          message: `Synced ${result.imported} films${
+            result.errors > 0 ? ` (${result.errors} errors)` : ""
+          }`,
+          imported: result.imported,
+          errors: result.errors,
+        });
+      } catch (error: any) {
+        console.error("Letterboxd sync failed:", error);
+        return NextResponse.json(
+          {
+            error:
+              error?.message ||
+              "Failed to sync Letterboxd data. Please try again.",
+          },
+          { status: 500 }
+        );
+      }
     }
     case "myanimelist": {
-      // Get MAL source
       const { data: malSource, error: malError } = await supabase
         .from("sources")
-        .select("*")
+        .select("source_user_id")
         .eq("user_id", session.user.id)
         .eq("source_name", "myanimelist")
         .single();
 
-      if (malError || !malSource || !malSource.access_token) {
+      if (malError || !malSource || !malSource.source_user_id) {
         return NextResponse.json(
-          { error: "MyAnimeList not connected" },
+          {
+            error:
+              "MyAnimeList not connected or missing username. Please reconnect to MyAnimeList.",
+          },
           { status: 404 }
         );
       }
 
       try {
-        const result = await syncMALData(session.user.id, malSource.access_token);
+        const result = await syncMALData(session.user.id);
         return NextResponse.json({
           success: true,
-          message: `Synced ${result.animeImported} anime and ${result.mangaImported} manga${result.errors > 0 ? ` (${result.errors} errors)` : ""}`,
+          message: `Synced ${result.animeImported} anime and ${result.mangaImported} manga${
+            result.errors > 0 ? ` (${result.errors} errors)` : ""
+          }`,
           ...result,
         });
       } catch (error: any) {
+        console.error("MyAnimeList sync failed:", error);
         return NextResponse.json(
-          { error: error.message || "Failed to sync MyAnimeList data" },
+          {
+            error:
+              error?.message ||
+              "Failed to sync MyAnimeList data. Please try again.",
+          },
           { status: 500 }
         );
       }
@@ -135,5 +256,46 @@ export async function POST(
         { status: 404 }
       );
   }
+}
+
+function extractGoodreadsIdentifier(rawValue?: string | null): string | null {
+  if (!rawValue) return null;
+  const value = rawValue.trim();
+  if (!value) return null;
+
+  if (value.startsWith("http")) {
+    try {
+      const url = new URL(value);
+      const match = url.pathname.match(/\/user\/show\/([^/]+)/);
+      if (match?.[1]) {
+        return match[1];
+      }
+    } catch (error) {
+      // Ignore URL parsing errors and fall back below
+    }
+  }
+
+  return value || null;
+}
+
+function extractLetterboxdUsername(rawValue?: string | null): string | null {
+  if (!rawValue) return null;
+  let value = rawValue.trim();
+  if (!value) return null;
+
+  if (value.startsWith("http")) {
+    try {
+      const url = new URL(value);
+      const segments = url.pathname.split("/").filter(Boolean);
+      if (segments.length > 0) {
+        value = segments[0];
+      }
+    } catch (error) {
+      // Ignore URL parsing errors and fall back below
+    }
+  }
+
+  value = value.replace(/^@/, "").replace(/\/+$/, "");
+  return value || null;
 }
 

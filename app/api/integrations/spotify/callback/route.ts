@@ -5,18 +5,34 @@ import {
   getSpotifyUserProfile,
   syncSpotifyData,
 } from "@/lib/integrations/spotify";
+import { getFrontendOrigin } from "@/lib/utils";
 import { supabase } from "@/lib/db/supabase";
 import { cookies } from "next/headers";
 
 export async function GET(request: NextRequest) {
   try {
+    // Get frontend origin early for all redirects
+    const frontendOrigin = getFrontendOrigin(request);
+    console.log("[Spotify][Callback] Incoming request", {
+      frontendOrigin,
+      requestUrl: request.url,
+      query: Object.fromEntries(request.nextUrl.searchParams.entries()),
+      headers: {
+        host: request.headers.get("host"),
+        xForwardedHost: request.headers.get("x-forwarded-host"),
+        xForwardedProto: request.headers.get("x-forwarded-proto"),
+      },
+    });
+
     const session = await auth();
 
     if (!session?.user?.id) {
-      return NextResponse.redirect(
-        new URL("/auth/login", request.url).toString()
-      );
+      console.warn("[Spotify][Callback] No session user id, redirecting to login");
+      return NextResponse.redirect(`${frontendOrigin}/auth/login`);
     }
+    console.log("[Spotify][Callback] Authenticated session", {
+      userId: session.user.id,
+    });
 
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get("code");
@@ -24,13 +40,17 @@ export async function GET(request: NextRequest) {
     const error = searchParams.get("error");
 
     if (error) {
-      const redirectUrl = new URL("/settings", request.url);
+      console.error("[Spotify][Callback] OAuth error returned from Spotify", {
+        error,
+      });
+      const redirectUrl = new URL("/settings", frontendOrigin);
       redirectUrl.searchParams.set("error", `spotify_${error}`);
       return NextResponse.redirect(redirectUrl);
     }
 
     if (!code) {
-      const redirectUrl = new URL("/settings", request.url);
+      console.error("[Spotify][Callback] Missing authorization code");
+      const redirectUrl = new URL("/settings", frontendOrigin);
       redirectUrl.searchParams.set("error", "missing_code");
       return NextResponse.redirect(redirectUrl);
     }
@@ -40,27 +60,46 @@ export async function GET(request: NextRequest) {
     const storedState = cookieStore.get("spotify_state")?.value;
     const expectedState = Buffer.from(session.user.id).toString("base64url");
 
-    if (state !== storedState || state !== expectedState) {
-      const redirectUrl = new URL("/settings", request.url);
+    // State must match both the stored cookie and the expected value
+    if (!state || state !== storedState || state !== expectedState) {
+      console.error("State validation failed:", {
+        received: state,
+        stored: storedState,
+        expected: expectedState,
+      });
+      const redirectUrl = new URL("/settings", frontendOrigin);
       redirectUrl.searchParams.set("error", "invalid_state");
       return NextResponse.redirect(redirectUrl);
     }
 
-    // Get callback URL
-    const callbackUrlObj = new URL(
-      "/api/integrations/spotify/callback",
-      request.url
-    );
-    if (callbackUrlObj.hostname === "localhost") {
-      callbackUrlObj.hostname = "127.0.0.1";
-    }
-    const callbackUrl = callbackUrlObj.toString();
+    // Get callback URL - use the frontend origin from request headers
+    const callbackUrl = `${frontendOrigin}/api/integrations/spotify/callback`;
+    console.log("[Spotify][Callback] Exchanging code for tokens", {
+      callbackUrl,
+    });
 
     // Exchange code for tokens
-    const tokens = await exchangeSpotifyToken(code, callbackUrl);
+    let tokens;
+    try {
+      tokens = await exchangeSpotifyToken(code, callbackUrl);
+    } catch (error: any) {
+      console.error("[Spotify][Callback] Error exchanging Spotify token", {
+        error: error.message,
+        callbackUrl,
+        hasCode: !!code,
+      });
+      const frontendOrigin = getFrontendOrigin(request);
+      const redirectUrl = new URL("/settings", frontendOrigin);
+      redirectUrl.searchParams.set("error", "spotify_token_exchange_failed");
+      return NextResponse.redirect(redirectUrl);
+    }
 
     // Get user profile
     const userProfile = await getSpotifyUserProfile(tokens.access_token);
+    console.log("[Spotify][Callback] Retrieved user profile", {
+      spotifyUserId: userProfile?.id,
+      displayName: userProfile?.display_name,
+    });
 
     // Calculate expiration
     const expiresAt = new Date();
@@ -75,6 +114,9 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (existingSource) {
+      console.log("[Spotify][Callback] Updating existing source", {
+        sourceId: existingSource.id,
+      });
       // Update existing source
       await supabase
         .from("sources")
@@ -87,6 +129,7 @@ export async function GET(request: NextRequest) {
         })
         .eq("id", existingSource.id);
     } else {
+      console.log("[Spotify][Callback] Creating new source record");
       // Create new source
       await supabase.from("sources").insert({
         user_id: session.user.id,
@@ -100,19 +143,42 @@ export async function GET(request: NextRequest) {
 
     // Clean up cookies
     cookieStore.delete("spotify_state");
+    console.log("[Spotify][Callback] Cleared state cookie");
 
-    // Sync initial data (async, don't wait)
-    syncSpotifyData(session.user.id, tokens.access_token).catch((error) => {
-      console.error("Error syncing initial Spotify data:", error);
-    });
+    // Perform initial sync (await to ensure completion)
+    let syncResult: { tracksImported: number; errors: number } | null = null;
+    try {
+      console.log("[Spotify][Callback] Starting initial sync");
+      syncResult = await syncSpotifyData(session.user.id, tokens.access_token);
+      console.log("[Spotify][Callback] Sync completed", syncResult);
+    } catch (syncError) {
+      console.error("[Spotify][Callback] Error syncing initial Spotify data", syncError);
+    }
 
-    // Redirect to settings with success message
-    const redirectUrl = new URL("/settings", request.url);
+    // Redirect to settings with success message - use frontend origin
+    const redirectUrl = new URL("/settings", frontendOrigin);
     redirectUrl.searchParams.set("connected", "spotify");
+
+    if (syncResult) {
+      redirectUrl.searchParams.set(
+        "syncedTracks",
+        syncResult.tracksImported.toString()
+      );
+      if (syncResult.errors > 0) {
+        redirectUrl.searchParams.set(
+          "syncErrors",
+          syncResult.errors.toString()
+        );
+      }
+    } else {
+      redirectUrl.searchParams.set("warning", "spotify_sync_failed");
+    }
+
     return NextResponse.redirect(redirectUrl);
   } catch (error) {
-    console.error("Error in Spotify callback:", error);
-    const redirectUrl = new URL("/settings", request.url);
+    console.error("[Spotify][Callback] Unexpected error", error);
+    const frontendOrigin = getFrontendOrigin(request);
+    const redirectUrl = new URL("/settings", frontendOrigin);
     redirectUrl.searchParams.set("error", "spotify_callback_failed");
     return NextResponse.redirect(redirectUrl);
   }

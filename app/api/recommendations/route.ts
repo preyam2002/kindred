@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching recommendations:", error);
     const formatted = formatErrorResponse(error);
     const statusCode = error instanceof Error && "statusCode" in error 
-      ? (error as any).statusCode 
+      ? (error as { statusCode: number }).statusCode 
       : 500;
 
     return NextResponse.json(formatted, { status: statusCode });

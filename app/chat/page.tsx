@@ -20,6 +20,7 @@ export default function ChatPage() {
     string | undefined
   >();
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchConversations() {
@@ -28,9 +29,20 @@ export default function ChatPage() {
         if (res.ok) {
           const data = await res.json();
           setConversations(data.conversations || []);
+          setErrorMessage(null);
+        } else {
+          const data = await res.json().catch(() => null);
+          if (data?.missingTables) {
+            setErrorMessage(data.error);
+          } else {
+            setErrorMessage(data?.error || "Failed to load conversations.");
+          }
+          setConversations([]);
         }
       } catch (error) {
         console.error("Error fetching conversations:", error);
+        setErrorMessage("Failed to load conversations. Check the console for details.");
+        setConversations([]);
       } finally {
         setLoading(false);
       }
@@ -89,7 +101,14 @@ export default function ChatPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-2">
-          {conversations.length > 0 ? (
+          {errorMessage ? (
+            <div className="text-center py-8 text-muted-foreground text-sm space-y-2">
+              <p>{errorMessage}</p>
+              <p className="text-xs">
+                Run the SQL migration at <code className="font-mono">lib/db/migrations/add_conversations_and_messages.sql</code> in your Supabase project, then reload this page.
+              </p>
+            </div>
+          ) : conversations.length > 0 ? (
             <div className="space-y-1">
               {conversations.map((conv) => (
                 <button
@@ -122,7 +141,11 @@ export default function ChatPage() {
 
       {/* Chat Area */}
       <div className="flex-1 flex flex-col">
-        <Chat conversationId={selectedConversation} />
+        <Chat
+          conversationId={selectedConversation}
+          disabled={Boolean(errorMessage)}
+          errorMessage={errorMessage}
+        />
       </div>
     </div>
   );

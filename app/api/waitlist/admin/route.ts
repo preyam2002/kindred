@@ -152,7 +152,10 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // TODO: Send invitation emails here
+      // Note: Email invitations can be sent here in the future
+      // For now, users are approved and can sign up with their email
+      // To implement: integrate with email service (e.g., Resend, SendGrid)
+      // and send invitation emails to approved users
 
       return NextResponse.json({
         success: true,

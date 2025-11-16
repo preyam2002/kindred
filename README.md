@@ -63,7 +63,7 @@ Fill in your environment variables:
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:5000](http://localhost:5000) in your browser.
 
 ## Project Structure
 
@@ -168,7 +168,7 @@ MyAnimeList uses OAuth 2.0 with PKCE for authentication:
 Spotify uses OAuth 2.0 Authorization Code Flow:
 
 1. Register your application at https://developer.spotify.com/dashboard
-2. Add redirect URI: `http://localhost:3000/api/integrations/spotify/callback` (or your production URL)
+2. Add redirect URI: `http://localhost:5000/api/integrations/spotify/callback` (or your production URL)
 3. Add credentials to `.env.local`:
    ```
    SPOTIFY_CLIENT_ID=your_client_id

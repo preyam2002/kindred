@@ -1,11 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
-import Anthropic from "@anthropic-ai/sdk";
+import { fetchMediaItemsForUserMedia } from "@/lib/db/media-helpers";
+import OpenAI from "openai";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY || "",
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || "",
 });
+
+const CHAT_MIGRATION_FILE = "lib/db/migrations/add_conversations_and_messages.sql";
+
+function isMissingChatTables(error: any): boolean {
+  return Boolean(error?.code === "PGRST205");
+}
+
+function missingChatTablesResponse(context: string) {
+  return NextResponse.json(
+    {
+      error:
+        "AI chat tables are not set up in Supabase. Please run the SQL migration at lib/db/migrations/add_conversations_and_messages.sql and restart the app.",
+      missingTables: true,
+      migrationFile: CHAT_MIGRATION_FILE,
+      context,
+    },
+    { status: 503 }
+  );
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,6 +62,9 @@ export async function POST(request: NextRequest) {
 
       if (createError || !newConversation) {
         console.error("Error creating conversation:", createError);
+        if (isMissingChatTables(createError)) {
+          return missingChatTablesResponse("create_conversation");
+        }
         return NextResponse.json(
           { error: "Failed to create conversation" },
           { status: 500 }
@@ -57,7 +80,13 @@ export async function POST(request: NextRequest) {
         .eq("id", currentConversationId)
         .single();
 
-      if (verifyError || !conversation || conversation.user_id !== userId) {
+      if (verifyError) {
+        if (isMissingChatTables(verifyError)) {
+          return missingChatTablesResponse("verify_conversation");
+        }
+      }
+
+      if (!conversation || conversation.user_id !== userId) {
         return NextResponse.json(
           { error: "Conversation not found" },
           { status: 404 }
@@ -76,6 +105,9 @@ export async function POST(request: NextRequest) {
 
     if (userMessageError) {
       console.error("Error storing user message:", userMessageError);
+      if (isMissingChatTables(userMessageError)) {
+        return missingChatTablesResponse("store_user_message");
+      }
       return NextResponse.json(
         { error: "Failed to store message" },
         { status: 500 }
@@ -91,6 +123,9 @@ export async function POST(request: NextRequest) {
 
     if (historyError) {
       console.error("Error fetching message history:", historyError);
+      if (isMissingChatTables(historyError)) {
+        return missingChatTablesResponse("fetch_history");
+      }
       return NextResponse.json(
         { error: "Failed to fetch conversation history" },
         { status: 500 }
@@ -105,20 +140,26 @@ export async function POST(request: NextRequest) {
       .single();
 
     // Get user's media stats
-    const { data: userMedia } = await supabase
+    const { data: userMediaRecords, error: mediaError } = await supabase
       .from("user_media")
-      .select(`
-        media_type,
-        rating,
-        books(title, author),
-        anime(title),
-        manga(title),
-        movies(title, year),
-        music(title, artist)
-      `)
+      .select("media_type, media_id, rating")
       .eq("user_id", userId)
       .order("rating", { ascending: false })
       .limit(50); // Get top 50 rated items
+
+    // Fetch the actual media items using the helper function
+    const mediaMap = userMediaRecords
+      ? await fetchMediaItemsForUserMedia(userMediaRecords)
+      : new Map();
+
+    // Combine user_media records with their media items
+    const userMedia = userMediaRecords
+      ? userMediaRecords.map((um) => ({
+          media_type: um.media_type,
+          rating: um.rating,
+          media_item: mediaMap.get(um.media_id),
+        }))
+      : [];
 
     // Get user's matches
     const { data: matches } = await supabase
@@ -131,13 +172,16 @@ export async function POST(request: NextRequest) {
     // Build context about the user
     const userContext = buildUserContext(userData, userMedia || [], matches || []);
 
-    // Prepare messages for Claude
-    const claudeMessages = messageHistory.map((msg: any) => ({
-      role: msg.role,
-      content: msg.content,
-    }));
+    // Check if API key is configured
+    if (!process.env.OPENAI_API_KEY) {
+      console.error("OPENAI_API_KEY is not configured");
+      return NextResponse.json(
+        { error: "AI service is not configured. Please contact support." },
+        { status: 500 }
+      );
+    }
 
-    // Call Claude API
+    // Prepare messages for OpenAI
     const systemPrompt = `You are a helpful AI assistant for Kindred, a social platform that connects people through their shared media tastes (books, anime, manga, movies, music).
 
 The user you're talking to is @${userData?.username || "user"}.
@@ -152,16 +196,39 @@ Your role is to:
 
 When making recommendations, consider their actual ratings and preferences. When discussing matches, reference their compatibility scores and shared items.`;
 
-    const response = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20241022",
-      max_tokens: 2048,
-      system: systemPrompt,
-      messages: claudeMessages as Anthropic.MessageParam[],
-    });
+    // Convert message history to OpenAI format
+    const openaiMessages = [
+      { role: "system" as const, content: systemPrompt },
+      ...messageHistory.map((msg: any) => ({
+        role: msg.role as "user" | "assistant",
+        content: msg.content,
+      })),
+    ];
+
+    let response;
+    try {
+      response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: openaiMessages,
+        max_tokens: 2048,
+      });
+    } catch (apiError: any) {
+      console.error("Error calling OpenAI API:", apiError);
+      const errorMessage = apiError?.message || "Unknown error";
+      const isAuthError = errorMessage.includes("api key") || errorMessage.includes("authentication") || apiError?.status === 401;
+      
+      return NextResponse.json(
+        { 
+          error: isAuthError 
+            ? "OpenAI API key is invalid or missing. Please check your configuration." 
+            : `Failed to get AI response: ${errorMessage}` 
+        },
+        { status: 500 }
+      );
+    }
 
     // Extract assistant's response
-    const assistantMessage =
-      response.content[0].type === "text" ? response.content[0].text : "";
+    const assistantMessage = response.choices[0]?.message?.content || "";
 
     // Store assistant message
     const { error: assistantMessageError } = await supabase
@@ -174,6 +241,9 @@ When making recommendations, consider their actual ratings and preferences. When
 
     if (assistantMessageError) {
       console.error("Error storing assistant message:", assistantMessageError);
+      if (isMissingChatTables(assistantMessageError)) {
+        return missingChatTablesResponse("store_assistant_message");
+      }
       // Continue anyway - we can still return the response
     }
 
@@ -213,6 +283,9 @@ export async function GET(request: NextRequest) {
         .single();
 
       if (convError || !conversation) {
+        if (isMissingChatTables(convError)) {
+          return missingChatTablesResponse("get_conversation");
+        }
         return NextResponse.json(
           { error: "Conversation not found" },
           { status: 404 }
@@ -227,6 +300,9 @@ export async function GET(request: NextRequest) {
 
       if (msgError) {
         console.error("Error fetching messages:", msgError);
+        if (isMissingChatTables(msgError)) {
+          return missingChatTablesResponse("get_messages");
+        }
         return NextResponse.json(
           { error: "Failed to fetch messages" },
           { status: 500 }
@@ -247,6 +323,9 @@ export async function GET(request: NextRequest) {
 
       if (error) {
         console.error("Error fetching conversations:", error);
+        if (isMissingChatTables(error)) {
+          return missingChatTablesResponse("list_conversations");
+        }
         return NextResponse.json(
           { error: "Failed to fetch conversations" },
           { status: 500 }
@@ -266,7 +345,7 @@ export async function GET(request: NextRequest) {
 
 function buildUserContext(
   userData: any,
-  userMedia: any[],
+  userMedia: Array<{ media_type: string; rating: number | null; media_item: any }>,
   matches: any[]
 ): string {
   let context = "";
@@ -276,7 +355,7 @@ function buildUserContext(
   }
 
   if (userMedia && userMedia.length > 0) {
-    const mediaByType: Record<string, any[]> = {};
+    const mediaByType: Record<string, typeof userMedia> = {};
     userMedia.forEach((item) => {
       if (!mediaByType[item.media_type]) {
         mediaByType[item.media_type] = [];
@@ -286,20 +365,23 @@ function buildUserContext(
 
     context += "User's media library:\n";
     for (const [type, items] of Object.entries(mediaByType)) {
-      context += `\n${type.charAt(0).toUpperCase() + type.slice(1)} (top rated):\n`;
+      const typeLabel = type === "book" ? "Books" : type === "movie" ? "Movies" : type.charAt(0).toUpperCase() + type.slice(1);
+      context += `\n${typeLabel} (top rated):\n`;
       items.slice(0, 10).forEach((item) => {
-        const mediaData = item[type === "music" ? "music" : type];
-        if (mediaData) {
-          const title = mediaData.title || "Unknown";
+        const mediaItem = item.media_item;
+        if (mediaItem) {
+          const title = mediaItem.title || "Unknown";
           const rating = item.rating ? ` - ${item.rating}/10` : "";
-          const extra =
-            type === "books"
-              ? ` by ${mediaData.author || "Unknown"}`
-              : type === "music"
-              ? ` by ${mediaData.artist || "Unknown"}`
-              : type === "movies" && mediaData.year
-              ? ` (${mediaData.year})`
-              : "";
+          let extra = "";
+          
+          if (type === "book" && mediaItem.author) {
+            extra = ` by ${mediaItem.author}`;
+          } else if (type === "music" && mediaItem.artist) {
+            extra = ` by ${mediaItem.artist}`;
+          } else if (type === "movie" && mediaItem.year) {
+            extra = ` (${mediaItem.year})`;
+          }
+          
           context += `  - ${title}${extra}${rating}\n`;
         }
       });

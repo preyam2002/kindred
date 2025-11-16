@@ -44,78 +44,100 @@ export async function scrapeGoodreadsProfile(
     const userIdMatch = profileHtml.match(/\/user\/show\/(\d+)/);
     const userId = userIdMatch ? userIdMatch[1] : username;
 
-    // Get the read books shelf
-    const shelfUrl = `https://www.goodreads.com/review/list/${userId}?shelf=read&per_page=100`;
-    const shelfResponse = await fetch(shelfUrl, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      },
-    });
-
-    if (!shelfResponse.ok) {
-      throw new Error("Failed to fetch Goodreads shelf");
-    }
-
-    const shelfHtml = await shelfResponse.text();
-    const $ = cheerio.load(shelfHtml);
-
     const books: GoodreadsBook[] = [];
+    let page = 1;
+    let hasMore = true;
+    const maxPages = 50; // Limit to prevent infinite loops
 
-    // Parse book entries from the shelf
-    $("#booksBody tr").each((_, element) => {
-      const $row = $(element);
+    // Fetch all pages of the read books shelf
+    while (hasMore && page <= maxPages) {
+      const shelfUrl = `https://www.goodreads.com/review/list/${userId}?shelf=read&per_page=100&page=${page}`;
+      const shelfResponse = await fetch(shelfUrl, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        },
+      });
 
-      const title =
-        $row.find(".title a").text().trim() ||
-        $row.find(".field.title").text().trim();
-      const author =
-        $row.find(".author a").text().trim() ||
-        $row.find(".field.author").text().trim();
-      const bookId =
-        $row.find(".title a").attr("href")?.match(/\/book\/show\/(\d+)/)?.[1] ||
-        "";
-      const coverUrl = $row.find("img.bookCover").attr("src");
-
-      // Extract rating
-      const ratingText = $row.find(".rating .value").text().trim();
-      const rating = ratingText ? parseInt(ratingText) : undefined;
-
-      // Extract date read
-      const dateRead = $row.find(".date_read .value").text().trim();
-
-      if (title && author) {
-        books.push({
-          title,
-          author,
-          rating,
-          bookId,
-          coverUrl,
-          dateRead,
-        });
+      if (!shelfResponse.ok) {
+        if (page === 1) {
+          throw new Error("Failed to fetch Goodreads shelf");
+        }
+        break;
       }
-    });
 
-    // Try alternative parsing if first method didn't work
-    if (books.length === 0) {
-      $(".bookalike").each((_, element) => {
-        const $book = $(element);
-        const title = $book.find(".bookTitle").text().trim();
-        const author = $book.find(".authorName").text().trim();
+      const shelfHtml = await shelfResponse.text();
+      const $ = cheerio.load(shelfHtml);
+
+      let pageBooks = 0;
+
+      // Parse book entries from the shelf
+      $("#booksBody tr").each((_, element) => {
+        const $row = $(element);
+
+        const title =
+          $row.find(".title a").text().trim() ||
+          $row.find(".field.title").text().trim();
+        const author =
+          $row.find(".author a").text().trim() ||
+          $row.find(".field.author").text().trim();
         const bookId =
-          $book.find(".bookTitle").attr("href")?.match(/\/book\/show\/(\d+)/)?.[1] ||
+          $row.find(".title a").attr("href")?.match(/\/book\/show\/(\d+)/)?.[1] ||
           "";
-        const coverUrl = $book.find("img").attr("src");
+        const coverUrl = $row.find("img.bookCover").attr("src");
+
+        // Extract rating
+        const ratingText = $row.find(".rating .value").text().trim();
+        let rating: number | undefined;
+        if (ratingText) {
+          const parsed = parseInt(ratingText);
+          rating = isNaN(parsed) ? undefined : parsed;
+        }
+
+        // Extract date read
+        const dateRead = $row.find(".date_read .value").text().trim();
 
         if (title && author) {
           books.push({
             title,
             author,
+            rating,
             bookId,
             coverUrl,
+            dateRead,
           });
+          pageBooks++;
         }
       });
+
+      // Try alternative parsing if first method didn't work
+      if (pageBooks === 0) {
+        $(".bookalike").each((_, element) => {
+          const $book = $(element);
+          const title = $book.find(".bookTitle").text().trim();
+          const author = $book.find(".authorName").text().trim();
+          const bookId =
+            $book.find(".bookTitle").attr("href")?.match(/\/book\/show\/(\d+)/)?.[1] ||
+            "";
+          const coverUrl = $book.find("img").attr("src");
+
+          if (title && author) {
+            books.push({
+              title,
+              author,
+              bookId,
+              coverUrl,
+            });
+            pageBooks++;
+          }
+        });
+      }
+
+      // Check if there are more pages
+      const nextPageLink = $("#reviewPagination a.next_page");
+      hasMore = nextPageLink.length > 0 && pageBooks > 0;
+      
+      page++;
     }
 
     return {

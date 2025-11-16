@@ -69,9 +69,19 @@ Set the following environment variables in your deployment platform (Vercel, Rai
 ### Twitter Developer Portal
 
 1. Go to https://developer.twitter.com/en/portal
-2. Create a new app
-3. Add callback URL: `https://yourdomain.com/api/auth/callback/twitter`
+2. Create a new app (or edit existing app)
+3. **Important**: Configure OAuth 2.0 settings:
+   - Go to "User authentication settings" or "App settings"
+   - Select "OAuth 2.0" as the authentication method
+   - Add callback URLs (both for local development and production):
+     - For local development: `http://localhost:5000/api/auth/callback/twitter`
+     - For production: `https://yourdomain.com/api/auth/callback/twitter`
+   - Set app permissions: Read users, Read tweets (or as needed)
+   - Save changes
 4. Copy Client ID and Secret to environment variables
+5. **Important**: Set `NEXTAUTH_URL` environment variable:
+   - For local development: `http://localhost:5000`
+   - For production: `https://yourdomain.com`
 
 ### MyAnimeList API Config
 
@@ -170,6 +180,36 @@ For other platforms (Railway, Render, DigitalOcean, etc.):
 ### OAuth redirect URI mismatch
 
 - Ensure callback URLs in OAuth provider dashboards match production URLs exactly
+
+### Twitter OAuth "Something went wrong" error
+
+This error typically occurs due to one of these issues:
+
+1. **Redirect URI mismatch** (most common):
+   - The redirect URI in your Twitter Developer Portal must **exactly match** the one being used
+   - Check the error URL - it shows the redirect URI being used (e.g., `http://localhost:5000/api/auth/callback/twitter`)
+   - Add this exact URL to your Twitter app's "Callback URLs" in the Developer Portal
+   - **Important**: Include the port number if using localhost (e.g., `localhost:5000` not just `localhost`)
+
+2. **NEXTAUTH_URL not set correctly**:
+   - Set `NEXTAUTH_URL` environment variable to match your app URL:
+     - Local: `http://localhost:5000`
+     - Production: `https://yourdomain.com`
+   - Restart your development server after setting this variable
+
+3. **OAuth 2.0 not configured in Twitter app**:
+   - Ensure your Twitter app is configured for OAuth 2.0 (not OAuth 1.0a)
+   - Go to Twitter Developer Portal → Your App → User authentication settings
+   - Select "OAuth 2.0" as the authentication method
+   - Set appropriate app permissions (Read users, Read tweets)
+
+4. **App permissions mismatch**:
+   - The scopes requested (`users.read`, `tweet.read`, `offline.access`) must match your app's permissions
+   - Verify in Twitter Developer Portal that your app has the required permissions enabled
+
+5. **Client ID/Secret incorrect**:
+   - Double-check that `TWITTER_CLIENT_ID` and `TWITTER_CLIENT_SECRET` match your Twitter app
+   - Regenerate credentials if unsure and update environment variables
 
 ### Database connection errors
 

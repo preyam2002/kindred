@@ -1,15 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { scrapeLetterboxdProfile } from "@/lib/scrapers/letterboxd-scraper";
-import { supabase } from "@/lib/db/supabase";
+import { importLetterboxdScraped } from "@/lib/integrations/letterboxd";
+import { UnauthorizedError, ValidationError, formatErrorResponse } from "@/lib/errors";
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        formatErrorResponse(new UnauthorizedError()),
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
-    const { username } = body;
+    const { username, profileUrl } = body;
 
     if (!username) {
       return NextResponse.json(
-        { error: "Username required" },
+        formatErrorResponse(new ValidationError("Username required")),
         { status: 400 }
       );
     }
@@ -17,67 +28,32 @@ export async function POST(request: NextRequest) {
     // Scrape Letterboxd profile
     const profile = await scrapeLetterboxdProfile(username);
 
-    // Store movies in database
-    const insertedMovies = [];
-
-    for (const film of profile.films) {
-      // Check if movie exists
-      const { data: existing } = await supabase
-        .from("movies")
-        .select("id")
-        .eq("source", "letterboxd")
-        .eq("source_item_id", film.filmId)
-        .single();
-
-      if (!existing && film.filmId) {
-        // Insert new movie
-        const { data: newMovie, error } = await supabase
-          .from("movies")
-          .insert({
-            source: "letterboxd",
-            source_item_id: film.filmId,
-            title: film.title,
-            year: film.year,
-            poster_url: film.posterUrl,
-          })
-          .select()
-          .single();
-
-        if (!error && newMovie) {
-          insertedMovies.push({
-            ...newMovie,
-            rating: film.rating,
-            watchedDate: film.watchedDate,
-          });
-        }
-      } else if (existing) {
-        insertedMovies.push({
-          ...existing,
-          rating: film.rating,
-          watchedDate: film.watchedDate,
-        });
-      }
-    }
+    // Import scraped data using the same pattern as CSV import
+    const result = await importLetterboxdScraped(
+      session.user.id,
+      profile,
+      profileUrl
+    );
 
     return NextResponse.json({
       success: true,
+      imported: result.imported,
+      errors: result.errors,
+      message: `Successfully imported ${result.imported} films${result.errors > 0 ? ` (${result.errors} errors)` : ""}`,
       profile: {
         username: profile.username,
         displayName: profile.displayName,
         totalFilms: profile.totalFilms,
       },
-      movies: insertedMovies,
-      scrapedCount: profile.films.length,
     });
   } catch (error) {
     console.error("Error in Letterboxd scrape API:", error);
-    return NextResponse.json(
-      {
-        error: "Failed to scrape Letterboxd profile",
-        message: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    const formatted = formatErrorResponse(error);
+    const statusCode = error instanceof Error && "statusCode" in error 
+      ? (error as any).statusCode 
+      : 500;
+
+    return NextResponse.json(formatted, { status: statusCode });
   }
 }
 

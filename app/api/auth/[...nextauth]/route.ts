@@ -2,18 +2,25 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Twitter from "next-auth/providers/twitter";
 import { supabase } from "@/lib/db/supabase";
+import { getFrontendOrigin } from "@/lib/utils";
+import { NextRequest } from "next/server";
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+// Create NextAuth configuration
+const authConfig = {
   secret: process.env.NEXTAUTH_SECRET,
-  trustHost: true, // Required for production deployments
+  trustHost: true, // Required for production deployments - uses request headers for redirect URIs
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+      // NextAuth automatically constructs redirect URI from request origin
+      // when trustHost is true, ensuring it uses the frontend host
     }),
     Twitter({
       clientId: process.env.TWITTER_CLIENT_ID || "",
       clientSecret: process.env.TWITTER_CLIENT_SECRET || "",
+      // NextAuth automatically constructs redirect URI from request origin
+      // when trustHost is true, ensuring it uses the frontend host
     }),
   ],
   callbacks: {
@@ -75,6 +82,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Handle Twitter/X OAuth (may not have email)
       else if (account?.provider === "twitter") {
         try {
+          // Validate Supabase configuration
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+          const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+          
+          if (!supabaseUrl || !supabaseAnonKey) {
+            console.error("Supabase environment variables are not configured");
+            return false;
+          }
+
           const twitterId = account.providerAccountId;
 
           if (!twitterId) {
@@ -89,11 +105,42 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const email = user.email || `twitter_${twitterId}@twitter.local`;
 
           // Check if user exists by email (or by Twitter ID if we stored it)
-          const { data: existingUser, error: lookupError } = await supabase
-            .from("users")
-            .select("*")
-            .eq("email", email)
-            .maybeSingle();
+          // Retry on network errors
+          let existingUser = null;
+          let lookupError = null;
+          let lookupAttempts = 0;
+          const maxLookupAttempts = 3;
+          
+          while (lookupAttempts < maxLookupAttempts) {
+            const result = await supabase
+              .from("users")
+              .select("*")
+              .eq("email", email)
+              .maybeSingle();
+            
+            existingUser = result.data;
+            lookupError = result.error;
+            
+            // Check if it's a network error
+            const isNetworkError = lookupError && (
+              lookupError.message?.includes("fetch failed") ||
+              lookupError.message?.includes("TypeError") ||
+              lookupError.message?.includes("ECONNREFUSED") ||
+              lookupError.message?.includes("ENOTFOUND")
+            );
+            
+            if (!lookupError || !isNetworkError) {
+              break; // Success or non-network error
+            }
+            
+            // Retry on network error with exponential backoff
+            lookupAttempts++;
+            if (lookupAttempts < maxLookupAttempts) {
+              const delay = Math.min(1000 * Math.pow(2, lookupAttempts - 1), 5000);
+              console.warn(`Network error during lookup, retrying in ${delay}ms (attempt ${lookupAttempts}/${maxLookupAttempts})`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+            }
+          }
 
           // Log any lookup errors but continue (might be a new user)
           if (lookupError) {
@@ -161,6 +208,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 details: error.details,
                 hint: error.hint,
               });
+
+              // Check if it's a network error
+              const isNetworkError = error.message?.includes("fetch failed") ||
+                error.message?.includes("TypeError") ||
+                error.message?.includes("ECONNREFUSED") ||
+                error.message?.includes("ENOTFOUND");
+
+              // Retry on network errors with exponential backoff
+              if (isNetworkError && attempts < 2) {
+                const delay = Math.min(1000 * Math.pow(2, attempts), 5000);
+                console.warn(`Network error during insert, retrying in ${delay}ms (attempt ${attempts + 1}/3)`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                attempts++;
+                insertError = error;
+                continue;
+              }
 
               // Check for avatar column missing error (PGRST204)
               const isAvatarColumnMissing =
@@ -404,6 +467,86 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   pages: {
     signIn: "/auth/login",
   },
-});
+};
 
-export const { GET, POST } = handlers;
+// Create NextAuth instance with dynamic URL configuration
+const createNextAuthHandlers = () => {
+  return NextAuth(authConfig);
+};
+
+const { handlers: baseHandlers, auth, signIn, signOut } = createNextAuthHandlers();
+
+// Wrap handlers to ensure they use the frontend origin from request headers
+export const GET = async (request: NextRequest) => {
+  // Get frontend origin from request headers
+  const frontendOrigin = getFrontendOrigin(request);
+  
+  // Create a modified request with the correct origin
+  if (frontendOrigin) {
+    try {
+      const frontendUrl = new URL(frontendOrigin);
+      const requestUrl = new URL(request.url);
+      
+      // Create a new URL with the frontend host but preserving the path
+      const modifiedUrl = new URL(requestUrl.pathname + requestUrl.search, frontendOrigin);
+      
+      // Create headers with the correct host
+      const headers = new Headers(request.headers);
+      headers.set('host', frontendUrl.host);
+      headers.set('x-forwarded-host', frontendUrl.host);
+      headers.set('x-forwarded-proto', frontendUrl.protocol.slice(0, -1)); // Remove trailing ':'
+      
+      const modifiedRequest = new NextRequest(modifiedUrl, {
+        method: request.method,
+        headers: headers,
+        body: request.body,
+      });
+      
+      return baseHandlers.GET(modifiedRequest);
+    } catch (error) {
+      console.error('Error modifying request for NextAuth:', error);
+      // Fall back to original request
+      return baseHandlers.GET(request);
+    }
+  }
+  
+  return baseHandlers.GET(request);
+};
+
+export const POST = async (request: NextRequest) => {
+  // Get frontend origin from request headers
+  const frontendOrigin = getFrontendOrigin(request);
+  
+  // Create a modified request with the correct origin
+  if (frontendOrigin) {
+    try {
+      const frontendUrl = new URL(frontendOrigin);
+      const requestUrl = new URL(request.url);
+      
+      // Create a new URL with the frontend host but preserving the path
+      const modifiedUrl = new URL(requestUrl.pathname + requestUrl.search, frontendOrigin);
+      
+      // Create headers with the correct host
+      const headers = new Headers(request.headers);
+      headers.set('host', frontendUrl.host);
+      headers.set('x-forwarded-host', frontendUrl.host);
+      headers.set('x-forwarded-proto', frontendUrl.protocol.slice(0, -1)); // Remove trailing ':'
+      
+      const modifiedRequest = new NextRequest(modifiedUrl, {
+        method: request.method,
+        headers: headers,
+        body: request.body,
+      });
+      
+      return baseHandlers.POST(modifiedRequest);
+    } catch (error) {
+      console.error('Error modifying request for NextAuth:', error);
+      // Fall back to original request
+      return baseHandlers.POST(request);
+    }
+  }
+  
+  return baseHandlers.POST(request);
+};
+
+export { auth, signIn, signOut };

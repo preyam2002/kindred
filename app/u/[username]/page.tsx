@@ -9,6 +9,7 @@ import { BookOpen, Film, Music, Tv, Share2, Link2, Copy, Check } from "lucide-re
 import type { User, UserMedia, MediaItem } from "@/types/database";
 import { generateTweetText, generateTwitterShareUrl, copyToClipboard } from "@/lib/share";
 import { ChallengeFriend } from "@/components/challenge-friend";
+import { normalizePosterUrl } from "@/lib/utils";
 
 export default function ProfilePage() {
   const params = useParams();
@@ -210,9 +211,21 @@ export default function ProfilePage() {
             >
               {item.media_items?.poster_url ? (
                 <img
-                  src={item.media_items.poster_url}
+                  src={normalizePosterUrl(item.media_items.poster_url) || ""}
                   alt={item.media_items.title}
                   className="w-full aspect-[2/3] object-cover"
+                  onError={(e) => {
+                    // Fallback to placeholder if image fails to load
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = "none";
+                    const parent = target.parentElement;
+                    if (parent && !parent.querySelector(".fallback-placeholder")) {
+                      const fallback = document.createElement("div");
+                      fallback.className = "fallback-placeholder w-full aspect-[2/3] bg-muted flex items-center justify-center";
+                      fallback.innerHTML = '<div class="text-4xl">🎬</div>';
+                      parent.appendChild(fallback);
+                    }
+                  }}
                 />
               ) : (
                 <div className="w-full aspect-[2/3] bg-muted flex items-center justify-center">

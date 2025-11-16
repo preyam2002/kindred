@@ -57,10 +57,19 @@ export default function SettingsPage() {
   } | null>(null);
   const [showGoodreadsUpload, setShowGoodreadsUpload] = useState(false);
   const [showLetterboxdUpload, setShowLetterboxdUpload] = useState(false);
+  const [showGoodreadsScraper, setShowGoodreadsScraper] = useState(false);
+  const [showLetterboxdScraper, setShowLetterboxdScraper] = useState(false);
+  const [showMALConnect, setShowMALConnect] = useState(false);
   const [uploadingGoodreads, setUploadingGoodreads] = useState(false);
   const [uploadingLetterboxd, setUploadingLetterboxd] = useState(false);
+  const [scrapingGoodreads, setScrapingGoodreads] = useState(false);
+  const [scrapingLetterboxd, setScrapingLetterboxd] = useState(false);
+  const [connectingMAL, setConnectingMAL] = useState(false);
   const [profileUrl, setProfileUrl] = useState("");
   const [letterboxdProfileUrl, setLetterboxdProfileUrl] = useState("");
+  const [goodreadsUsername, setGoodreadsUsername] = useState("");
+  const [letterboxdUsername, setLetterboxdUsername] = useState("");
+  const [malUsername, setMalUsername] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const letterboxdFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -73,17 +82,44 @@ export default function SettingsPage() {
     const params = new URLSearchParams(window.location.search);
     const connected = params.get("connected");
     const error = params.get("error");
+    const syncedTracks = params.get("syncedTracks");
+    const syncErrors = params.get("syncErrors");
+    const warning = params.get("warning");
 
     if (connected) {
+      // Refresh connections to reflect new integration state
+      fetchConnections();
+
+      let text = `Successfully connected to ${connected}!`;
+
+      if (syncedTracks && !Number.isNaN(Number(syncedTracks))) {
+        text += ` Synced ${syncedTracks} tracks`;
+        if (syncErrors && Number(syncErrors) > 0) {
+          text += ` with ${syncErrors} errors`;
+        }
+        text += ".";
+      } else if (connected === "spotify" && warning === "spotify_sync_failed") {
+        text += " However, the initial Spotify sync failed. Please try syncing manually.";
+      }
+
       setMessage({
-        type: "success",
-        text: `Successfully connected to ${connected}!`,
+        type:
+          warning && connected === "spotify" && warning === "spotify_sync_failed"
+            ? "error"
+            : "success",
+        text,
       });
       window.history.replaceState({}, "", window.location.pathname);
     } else if (error) {
       setMessage({
         type: "error",
         text: "An error occurred. Please try again.",
+      });
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (warning === "spotify_sync_failed") {
+      setMessage({
+        type: "error",
+        text: "Spotify sync failed. Please try again from Settings.",
       });
       window.history.replaceState({}, "", window.location.pathname);
     }
@@ -104,9 +140,113 @@ export default function SettingsPage() {
       setShowGoodreadsUpload(true);
     } else if (sourceName === "letterboxd") {
       setShowLetterboxdUpload(true);
+    } else if (sourceName === "myanimelist") {
+      setShowMALConnect(true);
     } else {
-      // For other integrations, redirect to OAuth flow
+      // For other integrations (Spotify), redirect to OAuth flow
       window.location.href = `/api/integrations/${sourceName}/connect`;
+    }
+  }
+
+  async function handleGoodreadsScrape(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    
+    if (!goodreadsUsername.trim()) {
+      setMessage({ type: "error", text: "Please enter a Goodreads username or user ID" });
+      return;
+    }
+
+    setScrapingGoodreads(true);
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/scrape/goodreads", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: goodreadsUsername.trim(),
+          profileUrl: profileUrl.trim() || undefined,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setMessage({
+          type: "success",
+          text: data.message || `Successfully imported ${data.imported} books!`,
+        });
+        setShowGoodreadsScraper(false);
+        setGoodreadsUsername("");
+        setProfileUrl("");
+        fetchConnections();
+      } else {
+        setMessage({
+          type: "error",
+          text: data.error || data.message || "Failed to scrape Goodreads profile",
+        });
+      }
+    } catch (error) {
+      console.error("Scrape error:", error);
+      setMessage({
+        type: "error",
+        text: "An error occurred while scraping. Please try again.",
+      });
+    } finally {
+      setScrapingGoodreads(false);
+    }
+  }
+
+  async function handleLetterboxdScrape(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    
+    if (!letterboxdUsername.trim()) {
+      setMessage({ type: "error", text: "Please enter a Letterboxd username" });
+      return;
+    }
+
+    setScrapingLetterboxd(true);
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/scrape/letterboxd", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: letterboxdUsername.trim(),
+          profileUrl: letterboxdProfileUrl.trim() || undefined,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setMessage({
+          type: "success",
+          text: data.message || `Successfully imported ${data.imported} films!`,
+        });
+        setShowLetterboxdScraper(false);
+        setLetterboxdUsername("");
+        setLetterboxdProfileUrl("");
+        fetchConnections();
+      } else {
+        setMessage({
+          type: "error",
+          text: data.error || data.message || "Failed to scrape Letterboxd profile",
+        });
+      }
+    } catch (error) {
+      console.error("Scrape error:", error);
+      setMessage({
+        type: "error",
+        text: "An error occurred while scraping. Please try again.",
+      });
+    } finally {
+      setScrapingLetterboxd(false);
     }
   }
 
@@ -218,6 +358,71 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleMALConnect(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    
+    if (!malUsername.trim()) {
+      setMessage({ type: "error", text: "Please enter a MyAnimeList username" });
+      return;
+    }
+
+    setConnectingMAL(true);
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/integrations/myanimelist/connect", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: malUsername.trim(),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        // Show sync results if available
+        let messageText = data.message || "MyAnimeList connected successfully!";
+        if (data.animeImported !== undefined || data.mangaImported !== undefined) {
+          const parts = [];
+          if (data.animeImported > 0) parts.push(`${data.animeImported} anime`);
+          if (data.mangaImported > 0) parts.push(`${data.mangaImported} manga`);
+          if (parts.length > 0) {
+            messageText = `MyAnimeList connected! Synced ${parts.join(" and ")}.`;
+          }
+          if (data.errors > 0) {
+            messageText += ` (${data.errors} errors)`;
+          }
+        }
+        
+        setMessage({
+          type: data.warning ? "error" : "success",
+          text: messageText,
+        });
+        setShowMALConnect(false);
+        setMalUsername("");
+        fetchConnections();
+      } else {
+        const errorText = data.error || "Failed to connect MyAnimeList";
+        const details = data.details ? `: ${data.details}` : "";
+        setMessage({
+          type: "error",
+          text: `${errorText}${details}`,
+        });
+      }
+    } catch (error) {
+      console.error("Connect error:", error);
+      setMessage({
+        type: "error",
+        text: "An error occurred while connecting. Please try again.",
+      });
+    } finally {
+      setConnectingMAL(false);
+    }
+  }
+
   async function handleDisconnect(sourceId: string) {
     try {
       const res = await fetch(`/api/integrations/delete/${sourceId}`, {
@@ -322,13 +527,29 @@ export default function SettingsPage() {
                         </button>
                       ) : integration.id === "goodreads" ||
                         integration.id === "letterboxd" ? (
-                        <button
-                          onClick={() => handleConnect(integration.id)}
-                          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity flex items-center gap-2 text-sm"
-                        >
-                          <Upload className="w-4 h-4" />
-                          Upload CSV
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              if (integration.id === "goodreads") {
+                                setShowGoodreadsScraper(true);
+                              } else {
+                                setShowLetterboxdScraper(true);
+                              }
+                            }}
+                            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity flex items-center gap-2 text-sm font-medium shadow-sm"
+                            style={{ backgroundColor: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}
+                          >
+                            <Link2 className="w-4 h-4" />
+                            Scrape Profile
+                          </button>
+                          <button
+                            onClick={() => handleConnect(integration.id)}
+                            className="px-4 py-2 bg-background border border-border rounded-md hover:bg-accent transition-colors flex items-center gap-2 text-sm"
+                          >
+                            <Upload className="w-4 h-4" />
+                            Upload CSV
+                          </button>
+                        </div>
                       ) : (
                         <button
                           onClick={() => handleConnect(integration.id)}
@@ -407,7 +628,7 @@ export default function SettingsPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-card border border-border rounded-lg p-6 max-w-md w-full"
+            className="bg-white border border-border rounded-lg p-6 max-w-md w-full shadow-lg"
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold">Import Goodreads Data</h2>
@@ -508,7 +729,7 @@ export default function SettingsPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-card border border-border rounded-lg p-6 max-w-md w-full"
+            className="bg-white border border-border rounded-lg p-6 max-w-md w-full shadow-lg"
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold">Import Letterboxd Data</h2>
@@ -597,6 +818,266 @@ export default function SettingsPage() {
                     }
                   }}
                   disabled={uploadingLetterboxd}
+                  className="px-4 py-2 border border-border rounded-md hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Goodreads Scraper Modal */}
+      {showGoodreadsScraper && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="border border-border rounded-lg p-6 max-w-md w-full shadow-lg bg-white"
+            style={{ opacity: 1 }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold">Scrape Goodreads Profile</h2>
+              <button
+                onClick={() => {
+                  setShowGoodreadsScraper(false);
+                  setGoodreadsUsername("");
+                  setProfileUrl("");
+                  setScrapingGoodreads(false);
+                }}
+                disabled={scrapingGoodreads}
+                className="text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-4 p-4 bg-muted/50 rounded-md border border-border">
+              <p className="text-sm mb-2">Enter your Goodreads username or user ID:</p>
+              <p className="text-xs text-muted-foreground">
+                We'll scrape your public Goodreads profile to import your books. This may take a few moments.
+              </p>
+            </div>
+
+            <form onSubmit={handleGoodreadsScrape} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Goodreads Username or User ID
+                </label>
+                <input
+                  type="text"
+                  value={goodreadsUsername}
+                  onChange={(e) => setGoodreadsUsername(e.target.value)}
+                  placeholder="username or 123456"
+                  required
+                  className="w-full px-4 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Your Goodreads username or numeric user ID
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Goodreads Profile URL (optional)
+                </label>
+                <input
+                  type="url"
+                  value={profileUrl}
+                  onChange={(e) => setProfileUrl(e.target.value)}
+                  placeholder="https://www.goodreads.com/user/show/123456"
+                  className="w-full px-4 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Your public Goodreads profile URL for linking
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  disabled={scrapingGoodreads}
+                  className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {scrapingGoodreads ? "Scraping..." : "Scrape Profile"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowGoodreadsScraper(false);
+                    setGoodreadsUsername("");
+                    setProfileUrl("");
+                    setScrapingGoodreads(false);
+                  }}
+                  disabled={scrapingGoodreads}
+                  className="px-4 py-2 border border-border rounded-md hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Letterboxd Scraper Modal */}
+      {showLetterboxdScraper && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="border border-border rounded-lg p-6 max-w-md w-full shadow-lg bg-white"
+            style={{ opacity: 1 }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold">Scrape Letterboxd Profile</h2>
+              <button
+                onClick={() => {
+                  setShowLetterboxdScraper(false);
+                  setLetterboxdUsername("");
+                  setLetterboxdProfileUrl("");
+                  setScrapingLetterboxd(false);
+                }}
+                disabled={scrapingLetterboxd}
+                className="text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-4 p-4 bg-muted/50 rounded-md border border-border">
+              <p className="text-sm mb-2">Enter your Letterboxd username:</p>
+              <p className="text-xs text-muted-foreground">
+                We'll scrape your public Letterboxd profile to import your films. This may take a few moments.
+              </p>
+            </div>
+
+            <form onSubmit={handleLetterboxdScrape} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Letterboxd Username
+                </label>
+                <input
+                  type="text"
+                  value={letterboxdUsername}
+                  onChange={(e) => setLetterboxdUsername(e.target.value)}
+                  placeholder="username"
+                  required
+                  className="w-full px-4 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Your Letterboxd username (without @)
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Letterboxd Profile URL (optional)
+                </label>
+                <input
+                  type="url"
+                  value={letterboxdProfileUrl}
+                  onChange={(e) => setLetterboxdProfileUrl(e.target.value)}
+                  placeholder="https://letterboxd.com/username/"
+                  className="w-full px-4 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Your public Letterboxd profile URL for linking
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  disabled={scrapingLetterboxd}
+                  className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {scrapingLetterboxd ? "Scraping..." : "Scrape Profile"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLetterboxdScraper(false);
+                    setLetterboxdUsername("");
+                    setLetterboxdProfileUrl("");
+                    setScrapingLetterboxd(false);
+                  }}
+                  disabled={scrapingLetterboxd}
+                  className="px-4 py-2 border border-border rounded-md hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* MyAnimeList Connect Modal */}
+      {showMALConnect && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white border border-border rounded-lg p-6 max-w-md w-full shadow-lg"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold">Connect MyAnimeList</h2>
+              <button
+                onClick={() => {
+                  setShowMALConnect(false);
+                  setMalUsername("");
+                  setConnectingMAL(false);
+                }}
+                disabled={connectingMAL}
+                className="text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-4 p-4 bg-muted/50 rounded-md border border-border">
+              <p className="text-sm mb-2">Enter your MyAnimeList username:</p>
+              <p className="text-xs text-muted-foreground">
+                We'll sync your public anime and manga lists. Your profile must be public for this to work.
+              </p>
+            </div>
+
+            <form onSubmit={handleMALConnect} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  MyAnimeList Username
+                </label>
+                <input
+                  type="text"
+                  value={malUsername}
+                  onChange={(e) => setMalUsername(e.target.value)}
+                  placeholder="username"
+                  required
+                  className="w-full px-4 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Your public MyAnimeList profile username
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  disabled={connectingMAL}
+                  className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {connectingMAL ? "Connecting and syncing..." : "Connect"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMALConnect(false);
+                    setMalUsername("");
+                    setConnectingMAL(false);
+                  }}
+                  disabled={connectingMAL}
                   className="px-4 py-2 border border-border rounded-md hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel

@@ -108,7 +108,13 @@ export async function GET(request: NextRequest) {
     const userAgent = request.headers.get("user-agent") || "";
 
     // Record click
-    const clickData: any = {
+    const clickData: {
+      ip_address: string;
+      user_agent: string;
+      clicked_at: string;
+      share_id?: string;
+      referral_code?: string;
+    } = {
       ip_address: ipAddress,
       user_agent: userAgent,
       clicked_at: new Date().toISOString(),

@@ -1,15 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { scrapeGoodreadsProfile } from "@/lib/scrapers/goodreads-scraper";
-import { supabase } from "@/lib/db/supabase";
+import { importGoodreadsScraped } from "@/lib/integrations/goodreads";
+import { UnauthorizedError, ValidationError, formatErrorResponse } from "@/lib/errors";
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        formatErrorResponse(new UnauthorizedError()),
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
-    const { username, userId } = body;
+    const { username, userId, profileUrl } = body;
 
     if (!username && !userId) {
       return NextResponse.json(
-        { error: "Username or userId required" },
+        formatErrorResponse(new ValidationError("Username or userId required")),
         { status: 400 }
       );
     }
@@ -17,67 +28,32 @@ export async function POST(request: NextRequest) {
     // Scrape Goodreads profile
     const profile = await scrapeGoodreadsProfile(username || userId);
 
-    // Store books in database
-    const insertedBooks = [];
-
-    for (const book of profile.books) {
-      // Check if book exists
-      const { data: existing } = await supabase
-        .from("books")
-        .select("id")
-        .eq("source", "goodreads")
-        .eq("source_item_id", book.bookId)
-        .single();
-
-      if (!existing && book.bookId) {
-        // Insert new book
-        const { data: newBook, error } = await supabase
-          .from("books")
-          .insert({
-            source: "goodreads",
-            source_item_id: book.bookId,
-            title: book.title,
-            author: book.author,
-            poster_url: book.coverUrl,
-          })
-          .select()
-          .single();
-
-        if (!error && newBook) {
-          insertedBooks.push({
-            ...newBook,
-            rating: book.rating,
-            dateRead: book.dateRead,
-          });
-        }
-      } else if (existing) {
-        insertedBooks.push({
-          ...existing,
-          rating: book.rating,
-          dateRead: book.dateRead,
-        });
-      }
-    }
+    // Import scraped data using the same pattern as CSV import
+    const result = await importGoodreadsScraped(
+      session.user.id,
+      profile,
+      profileUrl
+    );
 
     return NextResponse.json({
       success: true,
+      imported: result.imported,
+      errors: result.errors,
+      message: `Successfully imported ${result.imported} books${result.errors > 0 ? ` (${result.errors} errors)` : ""}`,
       profile: {
         username: profile.username,
         userId: profile.userId,
         totalBooks: profile.totalBooks,
       },
-      books: insertedBooks,
-      scrapedCount: profile.books.length,
     });
   } catch (error) {
     console.error("Error in Goodreads scrape API:", error);
-    return NextResponse.json(
-      {
-        error: "Failed to scrape Goodreads profile",
-        message: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    const formatted = formatErrorResponse(error);
+    const statusCode = error instanceof Error && "statusCode" in error 
+      ? (error as any).statusCode 
+      : 500;
+
+    return NextResponse.json(formatted, { status: statusCode });
   }
 }
 

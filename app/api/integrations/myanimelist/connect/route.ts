@@ -1,58 +1,146 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
-import { getMALAuthUrl, generatePKCE } from "@/lib/integrations/myanimelist";
-import { cookies } from "next/headers";
+import { getMALAnimeList, syncMALData } from "@/lib/integrations/myanimelist";
+import { supabase } from "@/lib/db/supabase";
 
-export async function GET(request: NextRequest) {
+/**
+ * Connect MAL by username (no OAuth needed for public lists)
+ */
+export async function POST(request: NextRequest) {
   try {
     const session = await auth();
 
     if (!session?.user?.id) {
-      return NextResponse.redirect(
-        new URL("/auth/login", request.url).toString()
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const username = body.username?.trim();
+
+    if (!username) {
+      return NextResponse.json(
+        { error: "Username is required" },
+        { status: 400 }
       );
     }
 
-    // Generate PKCE codes
-    const { codeVerifier, codeChallenge } = generatePKCE();
-
-    // Get callback URL
-    const callbackUrlObj = new URL(
-      "/api/integrations/myanimelist/callback",
-      request.url
-    );
-    if (callbackUrlObj.hostname === "localhost") {
-      callbackUrlObj.hostname = "127.0.0.1";
+    // Validate username by trying to fetch their public list
+    try {
+      await getMALAnimeList(username, 1, 0);
+    } catch (error: any) {
+      if (error.message?.includes("404") || error.message?.includes("Not Found")) {
+        return NextResponse.json(
+          { error: "MyAnimeList username not found or profile is private" },
+          { status: 404 }
+        );
+      }
+      // If it's a different error, still allow connection (might be rate limit, etc.)
+      console.warn("Warning: Could not validate MAL username:", error);
     }
-    const callbackUrl = callbackUrlObj.toString();
 
-    // Store code verifier in cookie
-    const cookieStore = await cookies();
-    cookieStore.set("mal_code_verifier", codeVerifier, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 600, // 10 minutes
+    // Check if source already exists
+    const { data: existingSource, error: checkError } = await supabase
+      .from("sources")
+      .select("id")
+      .eq("user_id", session.user.id)
+      .eq("source_name", "myanimelist")
+      .maybeSingle();
+
+    // If there's an error other than "not found", log it but continue
+    if (checkError && checkError.code !== "PGRST116") {
+      console.warn("Error checking for existing MAL source:", checkError);
+    }
+
+    if (existingSource) {
+      // Update existing source with username
+      const { error: updateError } = await supabase
+        .from("sources")
+        .update({
+          source_user_id: username,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existingSource.id);
+
+      if (updateError) {
+        console.error("Error updating MAL source:", updateError);
+        return NextResponse.json(
+          { error: "Failed to update MyAnimeList connection" },
+          { status: 500 }
+        );
+      }
+    } else {
+      // Create new source
+      const { data: insertedData, error: insertError } = await supabase
+        .from("sources")
+        .insert({
+          user_id: session.user.id,
+          source_name: "myanimelist",
+          source_user_id: username,
+        })
+        .select();
+
+      if (insertError) {
+        console.error("Error creating MAL source:", insertError);
+        // Return more detailed error message
+        const errorMessage = insertError.message || insertError.code || "Unknown database error";
+        return NextResponse.json(
+          { 
+            error: "Failed to create MyAnimeList connection",
+            details: errorMessage,
+            code: insertError.code,
+          },
+          { status: 500 }
+        );
+      }
+      
+      console.log("Successfully created MAL source:", insertedData);
+    }
+
+    // Verify the source was created/updated successfully before syncing
+    const { data: verifySource, error: verifyError } = await supabase
+      .from("sources")
+      .select("source_user_id")
+      .eq("user_id", session.user.id)
+      .eq("source_name", "myanimelist")
+      .single();
+
+    if (verifyError || !verifySource || !verifySource.source_user_id) {
+      console.error("Error verifying MAL source:", verifyError);
+      return NextResponse.json({
+        success: true,
+        message: "MyAnimeList connected, but sync failed. Please try syncing manually.",
+        warning: true,
+      });
+    }
+
+    // Sync data after connecting
+    let syncResult = null;
+    try {
+      syncResult = await syncMALData(session.user.id);
+    } catch (syncError: any) {
+      console.error("Error syncing MAL data after connect:", syncError);
+      const errorMessage = syncError?.message || "Unknown error";
+      // Still return success, but mention sync issue with details
+      return NextResponse.json({
+        success: true,
+        message: `MyAnimeList connected, but sync failed: ${errorMessage}. Please try syncing manually.`,
+        warning: true,
+        error: errorMessage,
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `MyAnimeList connected successfully! Synced ${syncResult.animeImported} anime and ${syncResult.mangaImported} manga.`,
+      animeImported: syncResult.animeImported,
+      mangaImported: syncResult.mangaImported,
+      errors: syncResult.errors,
     });
-
-    // Generate state for CSRF protection
-    const state = Buffer.from(session.user.id).toString("base64url");
-    cookieStore.set("mal_state", state, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 600,
-    });
-
-    // Redirect to MAL authorization
-    const authUrl = getMALAuthUrl(codeChallenge, callbackUrl, state);
-    return NextResponse.redirect(authUrl);
   } catch (error) {
-    console.error("Error initiating MAL OAuth:", error);
-    const redirectUrl = new URL("/settings", request.url);
-    redirectUrl.searchParams.set("error", "mal_oauth_failed");
-    return NextResponse.redirect(redirectUrl);
+    console.error("Error connecting MAL:", error);
+    return NextResponse.json(
+      { error: "Failed to connect MyAnimeList" },
+      { status: 500 }
+    );
   }
 }
-
-

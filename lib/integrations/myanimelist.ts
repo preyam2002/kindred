@@ -1,4 +1,5 @@
-// MyAnimeList API integration utilities using client_auth (API key) and OAuth
+// MyAnimeList API integration utilities using client_auth (API key only)
+// Note: OAuth is not required - public lists can be accessed with just CLIENT_ID
 import { supabase } from "@/lib/db/supabase";
 import crypto from "crypto";
 
@@ -31,7 +32,8 @@ export async function getMALAnimeList(
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch anime list: ${response.statusText}`);
+    const errorText = await response.text().catch(() => response.statusText);
+    throw new Error(`Failed to fetch anime list: ${response.status} ${response.statusText} - ${errorText}`);
   }
 
   return await response.json();
@@ -61,7 +63,8 @@ export async function getMALMangaList(
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch manga list: ${response.statusText}`);
+    const errorText = await response.text().catch(() => response.statusText);
+    throw new Error(`Failed to fetch manga list: ${response.status} ${response.statusText} - ${errorText}`);
   }
 
   return await response.json();
@@ -69,6 +72,8 @@ export async function getMALMangaList(
 
 /**
  * Generate PKCE code challenge and verifier for OAuth
+ * @deprecated OAuth is no longer required for MAL - public lists only need CLIENT_ID
+ * Kept for backwards compatibility
  */
 export function generatePKCE(): { codeVerifier: string; codeChallenge: string } {
   const codeVerifier = crypto.randomBytes(32).toString("base64url");
@@ -81,6 +86,8 @@ export function generatePKCE(): { codeVerifier: string; codeChallenge: string } 
 
 /**
  * Get MAL OAuth authorization URL
+ * @deprecated OAuth is no longer required for MAL - public lists only need CLIENT_ID
+ * Kept for backwards compatibility
  */
 export function getMALAuthUrl(state: string, codeChallenge: string, callbackUrl: string): string {
   const params = new URLSearchParams({
@@ -96,6 +103,8 @@ export function getMALAuthUrl(state: string, codeChallenge: string, callbackUrl:
 
 /**
  * Exchange authorization code for access token
+ * @deprecated OAuth is no longer required for MAL - public lists only need CLIENT_ID
+ * Kept for backwards compatibility
  */
 export async function exchangeMALToken(
   code: string,
@@ -132,6 +141,8 @@ export async function exchangeMALToken(
 
 /**
  * Refresh MAL access token
+ * @deprecated OAuth is no longer required for MAL - public lists only need CLIENT_ID
+ * Kept for backwards compatibility
  */
 export async function refreshMALToken(refreshToken: string): Promise<{
   access_token: string;
@@ -162,6 +173,8 @@ export async function refreshMALToken(refreshToken: string): Promise<{
 
 /**
  * Get MAL user profile
+ * @deprecated OAuth is no longer required for MAL - public lists only need CLIENT_ID
+ * Kept for backwards compatibility
  */
 export async function getMALUserProfile(accessToken: string): Promise<{
   id: number;
@@ -183,10 +196,10 @@ export async function getMALUserProfile(accessToken: string): Promise<{
 
 /**
  * Sync user's anime and manga from MAL
+ * Note: Only requires CLIENT_ID for public lists, no OAuth needed
  */
 export async function syncMALData(
-  userId: string,
-  accessToken: string
+  userId: string
 ): Promise<{ animeImported: number; mangaImported: number; errors: number }> {
   // Get user's MAL username from sources
   const { data: malSource, error: sourceError } = await supabase

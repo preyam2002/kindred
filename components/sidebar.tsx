@@ -98,7 +98,7 @@ export function Sidebar({ className = "" }: SidebarProps) {
       {/* Sidebar */}
       <aside
         className={`
-          fixed left-0 top-0 h-full w-64 bg-card border-r border-border z-50
+          fixed left-0 top-0 h-full lg:h-screen w-64 bg-card border-r border-border z-50
           transform transition-transform duration-300 ease-in-out
           lg:translate-x-0 lg:relative lg:z-auto
           ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}

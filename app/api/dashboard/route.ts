@@ -3,6 +3,7 @@ import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 import { calculateMashScore } from "@/lib/matching";
 import { fetchMediaItemsForUserMedia } from "@/lib/db/media-helpers";
+import type { UserMedia, Match, User, Source } from "@/types/database";
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,20 +18,85 @@ export async function GET(request: NextRequest) {
     // Get user's media stats
     const { data: userMedia, error: mediaError } = await supabase
       .from("user_media")
-      .select("media_type")
+      .select("media_type, rating")
       .eq("user_id", userId);
 
     if (mediaError) {
       console.error("Error fetching user media:", mediaError);
     }
 
+    const userMediaData = (userMedia ?? []) as Array<
+      Pick<UserMedia, "media_type" | "rating">
+    >;
+
     const mediaCounts = {
-      total: userMedia?.length || 0,
-      books: userMedia?.filter((m: any) => m.media_type === "book").length || 0,
-      anime: userMedia?.filter((m: any) => m.media_type === "anime").length || 0,
-      manga: userMedia?.filter((m: any) => m.media_type === "manga").length || 0,
-      movies: userMedia?.filter((m: any) => m.media_type === "movie").length || 0,
-      music: userMedia?.filter((m: any) => m.media_type === "music").length || 0,
+      total: userMediaData.length,
+      books: userMediaData.filter((m) => m.media_type === "book").length,
+      anime: userMediaData.filter((m) => m.media_type === "anime").length,
+      manga: userMediaData.filter((m) => m.media_type === "manga").length,
+      movies: userMediaData.filter((m) => m.media_type === "movie").length,
+      music: userMediaData.filter((m) => m.media_type === "music").length,
+    };
+
+    type MediaType = UserMedia["media_type"];
+    const ratingTotals: Record<MediaType, { sum: number; count: number }> = {
+      book: { sum: 0, count: 0 },
+      anime: { sum: 0, count: 0 },
+      manga: { sum: 0, count: 0 },
+      movie: { sum: 0, count: 0 },
+      music: { sum: 0, count: 0 },
+    };
+
+    let overallSum = 0;
+    let overallCount = 0;
+
+    for (const item of userMediaData) {
+      const mediaType = item.media_type;
+      const rating = item.rating;
+      if (
+        mediaType &&
+        ratingTotals[mediaType] &&
+        rating !== null &&
+        rating !== undefined
+      ) {
+        ratingTotals[mediaType].sum += rating;
+        ratingTotals[mediaType].count += 1;
+        overallSum += rating;
+        overallCount += 1;
+      }
+    }
+
+    const averageRatings = {
+      overall: overallCount > 0 ? Number((overallSum / overallCount).toFixed(1)) : null,
+      books:
+        ratingTotals.book.count > 0
+          ? Number((ratingTotals.book.sum / ratingTotals.book.count).toFixed(1))
+          : null,
+      anime:
+        ratingTotals.anime.count > 0
+          ? Number((ratingTotals.anime.sum / ratingTotals.anime.count).toFixed(1))
+          : null,
+      manga:
+        ratingTotals.manga.count > 0
+          ? Number((ratingTotals.manga.sum / ratingTotals.manga.count).toFixed(1))
+          : null,
+      movies:
+        ratingTotals.movie.count > 0
+          ? Number((ratingTotals.movie.sum / ratingTotals.movie.count).toFixed(1))
+          : null,
+      music:
+        ratingTotals.music.count > 0
+          ? Number((ratingTotals.music.sum / ratingTotals.music.count).toFixed(1))
+          : null,
+    };
+
+    const ratedCounts = {
+      overall: overallCount,
+      books: ratingTotals.book.count,
+      anime: ratingTotals.anime.count,
+      manga: ratingTotals.manga.count,
+      movies: ratingTotals.movie.count,
+      music: ratingTotals.music.count,
     };
 
     // Get connected integrations
@@ -76,19 +142,23 @@ export async function GET(request: NextRequest) {
       .neq("id", userId)
       .limit(20); // Limit for performance
 
-    let suggestedMatches: any[] = [];
+    let suggestedMatches: Array<{
+      user: User;
+      score: number;
+      sharedCount: number;
+    }> = [];
 
     if (allUsers && !usersError) {
       // Calculate matches for a few users (for suggestions)
       // For MVP, we'll just show a few users they haven't matched with yet
       const matchedUserIds = new Set(
-        matches?.map((m: any) =>
+        matches?.map((m: Match) =>
           m.user1_id === userId ? m.user2_id : m.user1_id
         ) || []
       );
 
-      const unmatchedUsers = allUsers.filter(
-        (u: any) => !matchedUserIds.has(u.id)
+      const unmatchedUsers = (allUsers as User[]).filter(
+        (u: User) => !matchedUserIds.has(u.id)
       );
 
       // Calculate match for first 3 unmatched users
@@ -121,10 +191,10 @@ export async function GET(request: NextRequest) {
       .limit(10);
 
     // Enrich with media items
-    let recentActivity: any[] = [];
+    let recentActivity: Array<UserMedia & { media_items: unknown }> = [];
     if (recentActivityRaw && recentActivityRaw.length > 0) {
       const mediaMap = await fetchMediaItemsForUserMedia(recentActivityRaw);
-      recentActivity = recentActivityRaw.map((um: any) => ({
+      recentActivity = recentActivityRaw.map((um: UserMedia) => ({
         ...um,
         media_items: mediaMap.get(um.media_id) || null,
       }));
@@ -136,14 +206,18 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       stats: {
-        media: mediaCounts,
+        media: {
+          ...mediaCounts,
+          averageRatings,
+          ratedCounts,
+        },
         integrations: sources?.length || 0,
         totalMatches: enrichedMatches.length,
       },
       recentMatches: enrichedMatches,
       suggestedMatches,
       recentActivity: recentActivity || [],
-      connectedIntegrations: sources?.map((s: any) => s.source_name) || [],
+      connectedIntegrations: sources?.map((s: Source) => s.source_name) || [],
     });
   } catch (error) {
     console.error("Error fetching dashboard data:", error);
