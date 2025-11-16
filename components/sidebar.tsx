@@ -23,6 +23,8 @@ import {
   PlayCircle,
   Target,
   Palette,
+  Share2,
+  RefreshCw,
 } from "lucide-react";
 import { Logo } from "./logo";
 import { useState } from "react";
@@ -101,6 +103,16 @@ export function Sidebar({ className = "" }: SidebarProps) {
       name: "Taste Art",
       href: "/taste-art",
       icon: Palette,
+    },
+    {
+      name: "Roulette",
+      href: "/roulette",
+      icon: RefreshCw,
+    },
+    {
+      name: "Share Cards",
+      href: "/share-cards",
+      icon: Share2,
     },
     {
       name: "AI Chat",
