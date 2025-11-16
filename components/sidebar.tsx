@@ -21,6 +21,8 @@ import {
   Trophy,
   Calendar,
   PlayCircle,
+  Target,
+  Palette,
 } from "lucide-react";
 import { Logo } from "./logo";
 import { useState } from "react";
@@ -84,6 +86,21 @@ export function Sidebar({ className = "" }: SidebarProps) {
       name: "Watch Together",
       href: "/watch-together",
       icon: PlayCircle,
+    },
+    {
+      name: "Challenges",
+      href: "/challenges",
+      icon: Target,
+    },
+    {
+      name: "Blind Match",
+      href: "/blind-match",
+      icon: Heart,
+    },
+    {
+      name: "Taste Art",
+      href: "/taste-art",
+      icon: Palette,
     },
     {
       name: "AI Chat",
