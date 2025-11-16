@@ -12,6 +12,8 @@ import {
   Play,
   ChevronUp,
   ChevronDown,
+  Users,
+  ThumbsUp,
 } from "lucide-react";
 import type { QueueItem } from "@/types/database";
 import { LoadingSpinner } from "@/components/loading-spinner";
@@ -19,9 +21,10 @@ import { ErrorMessage } from "@/components/error-message";
 
 interface QueueItemWithMedia extends QueueItem {
   media: any;
+  vote_count?: number;
 }
 
-type SortMode = "manual" | "priority" | "random" | "ai";
+type SortMode = "manual" | "priority" | "random" | "ai" | "social";
 
 export default function QueuePage() {
   const [queue, setQueue] = useState<QueueItemWithMedia[]>([]);
@@ -137,7 +140,7 @@ export default function QueuePage() {
         <div className="flex items-center gap-3 mb-6 flex-wrap">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">Sort by:</span>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => setSortMode("manual")}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -161,6 +164,17 @@ export default function QueuePage() {
                 Priority
               </button>
               <button
+                onClick={() => setSortMode("social")}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  sortMode === "social"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted hover:bg-muted/80"
+                }`}
+              >
+                <Users className="w-4 h-4 inline mr-1" />
+                Social
+              </button>
+              <button
                 onClick={() => setSortMode("ai")}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   sortMode === "ai"
@@ -169,7 +183,7 @@ export default function QueuePage() {
                 }`}
               >
                 <Sparkles className="w-4 h-4 inline mr-1" />
-                AI Recommended
+                AI
               </button>
             </div>
           </div>
@@ -240,6 +254,14 @@ export default function QueuePage() {
                   </div>
                 </div>
 
+                {/* Vote Count */}
+                {(item.vote_count ?? 0) > 0 && (
+                  <div className="flex-shrink-0 flex items-center gap-1 px-3 py-1 bg-blue-500/10 text-blue-500 rounded-full">
+                    <ThumbsUp className="w-3 h-3" />
+                    <span className="text-xs font-medium">{item.vote_count}</span>
+                  </div>
+                )}
+
                 {/* Priority Badge */}
                 <div className="flex-shrink-0">
                   <select
@@ -278,7 +300,7 @@ export default function QueuePage() {
         {/* Stats */}
         {queue.length > 0 && (
           <div className="mt-8 p-4 bg-muted/30 rounded-lg">
-            <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center justify-between text-sm flex-wrap gap-4">
               <div>
                 <span className="text-muted-foreground">Total items:</span>
                 <span className="ml-2 font-semibold">{queue.length}</span>
@@ -287,6 +309,12 @@ export default function QueuePage() {
                 <span className="text-muted-foreground">High priority:</span>
                 <span className="ml-2 font-semibold text-red-500">
                   {queue.filter((i) => i.priority === "high").length}
+                </span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Friend votes:</span>
+                <span className="ml-2 font-semibold text-blue-500">
+                  {queue.reduce((sum, i) => sum + (i.vote_count || 0), 0)}
                 </span>
               </div>
               <div>

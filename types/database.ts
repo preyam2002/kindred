@@ -204,6 +204,14 @@ export interface QueueItem {
   priority: "low" | "medium" | "high";
   added_at: Date;
   notes?: string;
+  vote_count?: number; // Total votes from friends
+}
+
+export interface QueueVote {
+  id: string;
+  queue_item_id: string;
+  user_id: string;
+  created_at: Date;
 }
 
 export interface Friendship {

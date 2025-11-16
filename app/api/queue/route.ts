@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const sortBy = searchParams.get("sort") || "position"; // position, priority, random, ai
+    const sortBy = searchParams.get("sort") || "position"; // position, priority, random, ai, social
 
     const supabase = createClient();
 
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
       .select("*")
       .eq("user_id", user.id);
 
-    // Apply sorting
+    // Apply sorting (except for social which we'll do after getting vote counts)
     if (sortBy === "priority") {
       // High, Medium, Low
       query = query.order("priority", { ascending: false });
@@ -45,6 +45,9 @@ export async function GET(request: Request) {
       // AI order - for now, use priority + position
       // TODO: Implement actual AI ranking
       query = query.order("priority", { ascending: false }).order("position", { ascending: true });
+    } else if (sortBy === "social") {
+      // Social voting - we'll sort by vote count after fetching
+      query = query.order("added_at", { ascending: false });
     } else {
       // Default: manual position
       query = query.order("position", { ascending: true });
@@ -60,7 +63,7 @@ export async function GET(request: Request) {
       );
     }
 
-    // Fetch media details for each item
+    // Fetch media details and vote counts for each item
     const itemsWithMedia = await Promise.all(
       (queueItems || []).map(async (item) => {
         const tableName =
@@ -75,9 +78,16 @@ export async function GET(request: Request) {
           .eq("id", item.media_id)
           .single();
 
+        // Get vote count for this item
+        const { count: voteCount } = await supabase
+          .from("queue_votes")
+          .select("*", { count: "exact", head: true })
+          .eq("queue_item_id", item.id);
+
         return {
           ...item,
           media,
+          vote_count: voteCount || 0,
         };
       })
     );
@@ -88,6 +98,11 @@ export async function GET(request: Request) {
         const j = Math.floor(Math.random() * (i + 1));
         [itemsWithMedia[i], itemsWithMedia[j]] = [itemsWithMedia[j], itemsWithMedia[i]];
       }
+    }
+
+    // If social sort, sort by vote count (highest first)
+    if (sortBy === "social") {
+      itemsWithMedia.sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
     }
 
     return NextResponse.json({ queue: itemsWithMedia });

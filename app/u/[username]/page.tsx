@@ -15,6 +15,7 @@ import {
   Heart,
   TrendingUp,
   Award,
+  ListChecks,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { LoadingSpinner } from "@/components/loading-spinner";
@@ -137,11 +138,26 @@ export default function UserProfilePage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="text-muted-foreground flex items-center gap-2"
+                className="text-muted-foreground flex items-center gap-2 mb-4"
               >
                 <Calendar className="w-4 h-4" />
                 Member for {formatDistanceToNow(new Date(profile.user.member_since))}
               </motion.p>
+              {!isOwnProfile && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <Link
+                    href={`/u/${username}/queue`}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+                  >
+                    <ListChecks className="w-4 h-4" />
+                    View Queue & Vote
+                  </Link>
+                </motion.div>
+              )}
             </div>
 
             {profile.compatibility && (
