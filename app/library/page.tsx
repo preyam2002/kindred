@@ -33,6 +33,7 @@ import type { UserMedia, MediaItem } from "@/types/database";
 import { normalizePosterUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { EditMediaDialog } from "@/components/edit-media-dialog";
 
 type MediaType = "all" | "book" | "anime" | "manga" | "movie" | "music";
 type ViewMode = "grid" | "list" | "compact";
@@ -59,6 +60,8 @@ export default function LibraryPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [ratingFilter, setRatingFilter] = useState<[number, number]>([0, 10]);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [editingItem, setEditingItem] = useState<(UserMedia & { media_items: MediaItem | null }) | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const urlType = searchParams.get("type");
   const [selectedType, setSelectedType] = useState<MediaType>(
@@ -75,27 +78,36 @@ export default function LibraryPage() {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    async function fetchLibrary() {
-      try {
-        const res = await fetch("/api/library");
-        if (res.ok) {
-          const data = await res.json();
-          setMedia(data.media || []);
-        }
-      } catch (error) {
-        console.error("Error fetching library:", error);
-      } finally {
-        setLoading(false);
+  const fetchLibrary = async () => {
+    try {
+      const res = await fetch("/api/library");
+      if (res.ok) {
+        const data = await res.json();
+        setMedia(data.media || []);
       }
+    } catch (error) {
+      console.error("Error fetching library:", error);
+    } finally {
+      setLoading(false);
     }
+  };
 
+  useEffect(() => {
     if (status === "authenticated") {
       fetchLibrary();
     } else if (status === "unauthenticated") {
       setLoading(false);
     }
   }, [status]);
+
+  const handleEditItem = (item: UserMedia & { media_items: MediaItem | null }) => {
+    setEditingItem(item);
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateComplete = () => {
+    fetchLibrary();
+  };
 
   // Filter and sort media
   const processedMedia = media
@@ -504,7 +516,7 @@ export default function LibraryPage() {
           {viewMode === "grid" && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
               {processedMedia.map((item, index) => (
-                <MediaCardGrid key={item.id} item={item} index={index} />
+                <MediaCardGrid key={item.id} item={item} index={index} onEdit={handleEditItem} />
               ))}
             </div>
           )}
@@ -512,7 +524,7 @@ export default function LibraryPage() {
           {viewMode === "list" && (
             <div className="space-y-2 sm:space-y-3">
               {processedMedia.map((item, index) => (
-                <MediaCardList key={item.id} item={item} index={index} />
+                <MediaCardList key={item.id} item={item} index={index} onEdit={handleEditItem} />
               ))}
             </div>
           )}
@@ -520,7 +532,7 @@ export default function LibraryPage() {
           {viewMode === "compact" && (
             <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2">
               {processedMedia.map((item, index) => (
-                <MediaCardCompact key={item.id} item={item} index={index} />
+                <MediaCardCompact key={item.id} item={item} index={index} onEdit={handleEditItem} />
               ))}
             </div>
           )}
@@ -561,6 +573,16 @@ export default function LibraryPage() {
           </div>
         )}
       </div>
+
+      {/* Edit Media Dialog */}
+      {editingItem && (
+        <EditMediaDialog
+          item={editingItem}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          onUpdate={handleUpdateComplete}
+        />
+      )}
     </div>
   );
 }
@@ -590,9 +612,11 @@ function StatCard({
 function MediaCardGrid({
   item,
   index,
+  onEdit,
 }: {
   item: UserMedia & { media_items: MediaItem | null };
   index: number;
+  onEdit: (item: UserMedia & { media_items: MediaItem | null }) => void;
 }) {
   const getStatusBadge = () => {
     if (!item.status) return null;
@@ -700,6 +724,18 @@ function MediaCardGrid({
             />
           </div>
         )}
+
+        {/* Edit Button (appears on hover) */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit(item);
+          }}
+          className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 backdrop-blur-sm text-white p-1.5 rounded hover:bg-black"
+          title="Edit"
+        >
+          <Edit2 className="w-3 h-3 sm:w-4 sm:h-4" />
+        </button>
       </div>
 
       {/* Details */}
@@ -754,9 +790,11 @@ function MediaCardGrid({
 function MediaCardList({
   item,
   index,
+  onEdit,
 }: {
   item: UserMedia & { media_items: MediaItem | null };
   index: number;
+  onEdit: (item: UserMedia & { media_items: MediaItem | null }) => void;
 }) {
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString("en-US", {
@@ -812,12 +850,24 @@ function MediaCardList({
           <h3 className="font-semibold text-sm sm:text-lg truncate">
             {item.media_items?.title || "Unknown"}
           </h3>
-          {item.rating && (
-            <div className="flex items-center gap-1 text-sm sm:text-base font-bold flex-shrink-0">
-              <Star className="w-3 h-3 sm:w-4 sm:h-4 fill-yellow-400 text-yellow-400" />
-              {item.rating}
-            </div>
-          )}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {item.rating && (
+              <div className="flex items-center gap-1 text-sm sm:text-base font-bold">
+                <Star className="w-3 h-3 sm:w-4 sm:h-4 fill-yellow-400 text-yellow-400" />
+                {item.rating}
+              </div>
+            )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(item);
+              }}
+              className="p-1.5 hover:bg-accent rounded transition-colors"
+              title="Edit"
+            >
+              <Edit2 className="w-3 h-3 sm:w-4 sm:h-4" />
+            </button>
+          </div>
         </div>
 
         <div className="space-y-0.5 sm:space-y-1 text-xs sm:text-sm text-muted-foreground">
@@ -892,9 +942,11 @@ function MediaCardList({
 function MediaCardCompact({
   item,
   index,
+  onEdit,
 }: {
   item: UserMedia & { media_items: MediaItem | null };
   index: number;
+  onEdit: (item: UserMedia & { media_items: MediaItem | null }) => void;
 }) {
   return (
     <motion.div
@@ -958,6 +1010,18 @@ function MediaCardCompact({
             />
           </div>
         )}
+
+      {/* Edit Button (appears on hover) */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onEdit(item);
+        }}
+        className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 backdrop-blur-sm text-white p-1 rounded hover:bg-black"
+        title="Edit"
+      >
+        <Edit2 className="w-2 h-2 sm:w-3 sm:h-3" />
+      </button>
     </motion.div>
   );
 }
