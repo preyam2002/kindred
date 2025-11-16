@@ -91,14 +91,35 @@ export interface Music {
   updated_at: Date;
 }
 
+export type MediaStatus =
+  | "completed"
+  | "watching"
+  | "reading"
+  | "listening"
+  | "plan_to_watch"
+  | "plan_to_read"
+  | "plan_to_listen"
+  | "on_hold"
+  | "dropped";
+
 export interface UserMedia {
   id: string;
   user_id: string;
   media_type: "book" | "anime" | "manga" | "movie" | "music";
   media_id: string;
   rating?: number;
-  timestamp: Date;
+  timestamp: Date; // Date added to library
   tags?: string[];
+  // Enhanced tracking fields
+  status?: MediaStatus; // Current status (completed, watching, etc.)
+  progress?: number; // Episodes watched, chapters read, etc.
+  progress_total?: number; // Total episodes, chapters, etc.
+  times_consumed?: number; // For rewatches/rereads
+  start_date?: Date; // When user started
+  finish_date?: Date; // When user finished
+  is_favorite?: boolean; // Favorite flag
+  notes?: string; // Personal notes
+  source_rating?: string; // Original rating from source
   created_at: Date;
   updated_at: Date;
 }
