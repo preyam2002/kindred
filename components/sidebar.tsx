@@ -13,6 +13,10 @@ import {
   Menu,
   X,
   MessageCircle,
+  Library,
+  Sparkles,
+  Heart,
+  TrendingUp,
 } from "lucide-react";
 import { Logo } from "./logo";
 import { useState } from "react";
@@ -31,6 +35,26 @@ export function Sidebar({ className = "" }: SidebarProps) {
       name: "Dashboard",
       href: "/dashboard",
       icon: LayoutDashboard,
+    },
+    {
+      name: "Library",
+      href: "/library",
+      icon: Library,
+    },
+    {
+      name: "Recommendations",
+      href: "/recommendations",
+      icon: TrendingUp,
+    },
+    {
+      name: "Taste DNA",
+      href: "/taste-dna",
+      icon: Sparkles,
+    },
+    {
+      name: "Taste Match",
+      href: "/taste-match",
+      icon: Heart,
     },
     {
       name: "AI Chat",
