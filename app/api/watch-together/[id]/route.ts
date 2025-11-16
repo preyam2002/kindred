@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
+import { auth } from "@/app/api/auth/[...nextauth]/route";
+import { supabase } from "@/lib/db/supabase";
 
 export async function GET(
   request: NextRequest,

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
+import { auth } from "@/app/api/auth/[...nextauth]/route";
+import { supabase } from "@/lib/db/supabase";
 
 // Color palette for genres
 const GENRE_COLORS: Record<string, string> = {
@@ -15,7 +14,7 @@ const GENRE_COLORS: Record<string, string> = {
   Romance: "#FD79A8",
   "Sci-Fi": "#0984E3",
   Thriller: "#E17055",
-  Slice of Life: "#74B9FF",
+  "Slice of Life": "#74B9FF",
   Psychological: "#B2BEC3",
   Music: "#F39C12",
   Sports: "#E67E22",
@@ -28,7 +27,7 @@ function getGenreColor(genre: string): string {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
 
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
