@@ -8,6 +8,7 @@ import {
   Search,
   Users,
   User,
+  UserPlus,
   Settings,
   LogOut,
   Menu,
@@ -27,6 +28,7 @@ import {
   RefreshCw,
   Grid3x3,
   ListChecks,
+  Activity,
 } from "lucide-react";
 import { Logo } from "./logo";
 import { GlobalSearch } from "./global-search";
@@ -134,6 +136,11 @@ export function Sidebar({ className = "" }: SidebarProps) {
       icon: TrendingUp,
     },
     {
+      name: "Activity Feed",
+      href: "/activity",
+      icon: Activity,
+    },
+    {
       name: "Leaderboards",
       href: "/leaderboards",
       icon: Trophy,
@@ -152,6 +159,11 @@ export function Sidebar({ className = "" }: SidebarProps) {
       name: "Matches",
       href: "/matches",
       icon: Users,
+    },
+    {
+      name: "Friends",
+      href: "/friends",
+      icon: UserPlus,
     },
     {
       name: "Profile",
