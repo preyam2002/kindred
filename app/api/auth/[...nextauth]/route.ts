@@ -1,6 +1,8 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Twitter from "next-auth/providers/twitter";
+import type { Account, User, Session } from "next-auth";
+import type { JWT } from "next-auth/jwt";
 import { supabase } from "@/lib/db/supabase";
 import { getFrontendOrigin } from "@/lib/utils";
 import { NextRequest } from "next/server";
@@ -24,7 +26,7 @@ const authConfig = {
     }),
   ],
   callbacks: {
-    async signIn({ user, account }) {
+    async signIn({ user, account }: { user: User; account?: Account | null }) {
       // Handle Google OAuth (always has email)
       if (account?.provider === "google" && user.email) {
         // Check if user exists
@@ -355,7 +357,7 @@ const authConfig = {
       }
       return true;
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account }: { token: JWT; user?: User; account?: Account | null }) {
       // When user signs in, store their ID in the token
       if (user) {
         // Check if signIn callback stored the user ID (for Twitter/OAuth users)
@@ -427,7 +429,7 @@ const authConfig = {
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token }: { session: Session; token: JWT }) {
       // Use token data (which has the ID) if available
       if (token.id) {
         session.user.id = token.id as string;

@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
 
     // Fetch the actual media items using the helper function
     const mediaMap = userMediaRecords
-      ? await fetchMediaItemsForUserMedia(userMediaRecords)
+      ? await fetchMediaItemsForUserMedia(userMediaRecords as any)
       : new Map();
 
     // Combine user_media records with their media items

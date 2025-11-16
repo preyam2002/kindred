@@ -18,15 +18,16 @@ export default function LibraryPage() {
   
   // Get initial filter from URL query parameter
   const urlType = searchParams.get("type");
-  const [selectedType, setSelectedType] = useState<"all" | "book" | "anime" | "manga" | "movie" | "music">(
-    (urlType as typeof selectedType) || "all"
+  type MediaType = "all" | "book" | "anime" | "manga" | "movie" | "music";
+  const [selectedType, setSelectedType] = useState<MediaType>(
+    (urlType as MediaType) || "all"
   );
 
   useEffect(() => {
     // Update filter when URL changes
     const urlType = searchParams.get("type");
     if (urlType && ["all", "book", "anime", "manga", "movie", "music"].includes(urlType)) {
-      setSelectedType(urlType as typeof selectedType);
+      setSelectedType(urlType as MediaType);
     }
   }, [searchParams]);
 

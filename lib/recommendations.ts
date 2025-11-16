@@ -1,6 +1,7 @@
 // Recommendations engine for suggesting media to users
 import { supabase } from "./db/supabase";
-import type { MediaItem } from "@/types/database";
+import { fetchMediaItemsForUserMedia } from "./db/media-helpers";
+import type { MediaItem, UserMedia } from "@/types/database";
 
 export interface Recommendation {
   media: MediaItem;
@@ -20,39 +21,43 @@ export async function getCollaborativeRecommendations(
   // Get user's media items
   const { data: userMedia } = await supabase
     .from("user_media")
-    .select("media_item_id, rating")
+    .select("media_type, media_id, rating")
     .eq("user_id", userId);
 
   if (!userMedia || userMedia.length === 0) {
     return [];
   }
 
-  const userMediaIds = new Set(userMedia.map((um) => um.media_item_id));
+  // Create set of user's media as "type:id" keys
+  const userMediaKeys = new Set(
+    userMedia.map((um) => `${um.media_type}:${um.media_id}`)
+  );
 
   // Find users with similar tastes (have at least 3 shared items with high ratings)
+  // We need to find all user_media records that match our media
   const { data: allUserMedia } = await supabase
     .from("user_media")
-    .select("user_id, media_item_id, rating")
-    .neq("user_id", userId)
-    .in("media_item_id", Array.from(userMediaIds));
+    .select("user_id, media_type, media_id, rating")
+    .neq("user_id", userId);
 
   if (!allUserMedia) {
     return [];
   }
 
-  // Count shared items per user and find similar users
+  // Filter to only those that match our media and count shared items per user
   const userSharedCounts = new Map<string, number>();
   const userSharedRatings = new Map<string, Map<string, number>>();
 
   allUserMedia.forEach((um) => {
-    if (userMediaIds.has(um.media_item_id)) {
+    const key = `${um.media_type}:${um.media_id}`;
+    if (userMediaKeys.has(key)) {
       const count = userSharedCounts.get(um.user_id) || 0;
       userSharedCounts.set(um.user_id, count + 1);
 
       if (!userSharedRatings.has(um.user_id)) {
         userSharedRatings.set(um.user_id, new Map());
       }
-      userSharedRatings.get(um.user_id)!.set(um.media_item_id, um.rating || 0);
+      userSharedRatings.get(um.user_id)!.set(key, um.rating || 0);
     }
   });
 
@@ -68,46 +73,68 @@ export async function getCollaborativeRecommendations(
   // Get items liked by similar users that the current user doesn't have
   const { data: similarUserMedia } = await supabase
     .from("user_media")
-    .select("media_item_id, rating, media_items(*)")
+    .select("media_type, media_id, rating")
     .in("user_id", similarUserIds)
-    .gte("rating", 7) // Only highly rated items
-    .not("media_item_id", "in", `(${Array.from(userMediaIds).join(",")})`);
+    .gte("rating", 7); // Only highly rated items
 
   if (!similarUserMedia) {
     return [];
   }
 
-  // Score items based on how many similar users liked them and their ratings
-  const itemScores = new Map<string, { count: number; totalRating: number }>();
+  // Filter out items the user already has
+  const newItems = similarUserMedia.filter((um) => {
+    const key = `${um.media_type}:${um.media_id}`;
+    return !userMediaKeys.has(key);
+  });
 
-  similarUserMedia.forEach((um: any) => {
-    const mediaId = um.media_item_id;
+  // Score items based on how many similar users liked them and their ratings
+  const itemScores = new Map<string, { count: number; totalRating: number; mediaType: string; mediaId: string }>();
+
+  newItems.forEach((um) => {
+    const key = `${um.media_type}:${um.media_id}`;
     const rating = um.rating || 0;
 
-    if (!itemScores.has(mediaId)) {
-      itemScores.set(mediaId, { count: 0, totalRating: 0 });
+    if (!itemScores.has(key)) {
+      itemScores.set(key, {
+        count: 0,
+        totalRating: 0,
+        mediaType: um.media_type,
+        mediaId: um.media_id,
+      });
     }
 
-    const score = itemScores.get(mediaId)!;
+    const score = itemScores.get(key)!;
     score.count += 1;
     score.totalRating += rating;
   });
 
+  // Fetch the actual media items
+  const mediaToFetch: UserMedia[] = Array.from(itemScores.values()).map((score) => ({
+    id: '', // Not used in fetch
+    user_id: '', // Not used in fetch
+    media_type: score.mediaType as any,
+    media_id: score.mediaId,
+    rating: undefined,
+    timestamp: new Date(),
+    tags: undefined,
+    created_at: new Date(),
+    updated_at: new Date(),
+  }));
+
+  const mediaMap = await fetchMediaItemsForUserMedia(mediaToFetch);
+
   // Convert to recommendations
   const recommendations: Recommendation[] = [];
 
-  for (const [mediaId, score] of itemScores.entries()) {
+  for (const [key, score] of itemScores.entries()) {
     const avgRating = score.totalRating / score.count;
     const finalScore = score.count * 0.6 + avgRating * 0.4; // Weight by popularity and rating
 
-    const found = similarUserMedia.find(
-      (um: any) => um.media_item_id === mediaId
-    );
-    const mediaItem = found?.media_items;
+    const mediaItem = mediaMap.get(score.mediaId);
 
-    if (mediaItem && found) {
+    if (mediaItem) {
       recommendations.push({
-        media: mediaItem as unknown as MediaItem,
+        media: mediaItem,
         reason: `Liked by ${score.count} user${score.count > 1 ? "s" : ""} with similar taste`,
         score: finalScore,
         source: "collaborative",
@@ -131,7 +158,7 @@ export async function getContentBasedRecommendations(
   // Get user's highly rated media
   const { data: userMedia } = await supabase
     .from("user_media")
-    .select("media_item_id, rating, media_items(*)")
+    .select("media_type, media_id, rating")
     .eq("user_id", userId)
     .gte("rating", 7);
 
@@ -139,12 +166,15 @@ export async function getContentBasedRecommendations(
     return [];
   }
 
+  // Fetch actual media items to extract genres
+  const mediaMap = await fetchMediaItemsForUserMedia(userMedia as UserMedia[]);
+
   // Extract genres and types user likes
   const likedGenres = new Set<string>();
   const likedTypes = new Set<string>();
 
-  userMedia.forEach((um: any) => {
-    const media = um.media_items;
+  userMedia.forEach((um) => {
+    const media = mediaMap.get(um.media_id);
     if (media?.genre) {
       media.genre.forEach((g: string) => likedGenres.add(g));
     }
@@ -157,31 +187,47 @@ export async function getContentBasedRecommendations(
     return [];
   }
 
-  const userMediaIds = new Set(userMedia.map((um) => um.media_item_id));
+  const userMediaKeys = new Set(
+    userMedia.map((um) => `${um.media_type}:${um.media_id}`)
+  );
 
-  // Find media with similar genres/types that user hasn't rated
-  let recommendationsQuery = supabase
-    .from("media_items")
-    .select("*")
-    .not("id", "in", `(${Array.from(userMediaIds).join(",")})`)
-    .limit(100);
+  // We need to query each media table separately for content-based filtering
+  // since we can't easily query by genre across all tables with polymorphism
+  const candidateMedia: MediaItem[] = [];
 
-  // Filter by type if we have types
-  if (likedTypes.size > 0) {
-    recommendationsQuery = recommendationsQuery.in(
-      "type",
-      Array.from(likedTypes)
-    );
+  // Query each media type table
+  const tables: Array<{ table: string; type: string }> = [
+    { table: "books", type: "book" },
+    { table: "anime", type: "anime" },
+    { table: "manga", type: "manga" },
+    { table: "movies", type: "movie" },
+    { table: "music", type: "music" },
+  ];
+
+  for (const { table, type } of tables) {
+    if (likedTypes.size === 0 || likedTypes.has(type)) {
+      const { data } = await supabase
+        .from(table)
+        .select("*")
+        .limit(50);
+
+      if (data) {
+        data.forEach((item: any) => {
+          const key = `${type}:${item.id}`;
+          if (!userMediaKeys.has(key)) {
+            candidateMedia.push({ ...item, type } as MediaItem);
+          }
+        });
+      }
+    }
   }
 
-  const { data: candidateMedia } = await recommendationsQuery;
-
-  if (!candidateMedia) {
+  if (candidateMedia.length === 0) {
     return [];
   }
 
   // Score items based on genre overlap
-  const scoredItems = candidateMedia.map((media: any) => {
+  const scoredItems = candidateMedia.map((media) => {
     const mediaGenres = new Set(media.genre || []);
     const sharedGenres = Array.from(likedGenres).filter((g) =>
       mediaGenres.has(g)
@@ -189,7 +235,7 @@ export async function getContentBasedRecommendations(
     const genreScore = sharedGenres.length / Math.max(likedGenres.size, 1);
 
     return {
-      media: media as MediaItem,
+      media: media,
       score: genreScore,
       reason: `Similar to your favorite ${sharedGenres.slice(0, 2).join(", ")}`,
       source: "content" as const,
@@ -232,47 +278,71 @@ export async function getSimilarUserRecommendations(
   // Get user's media to exclude
   const { data: userMedia } = await supabase
     .from("user_media")
-    .select("media_item_id")
+    .select("media_type, media_id")
     .eq("user_id", userId);
 
-  const userMediaIds = new Set(userMedia?.map((um) => um.media_item_id) || []);
+  const userMediaKeys = new Set(
+    userMedia?.map((um) => `${um.media_type}:${um.media_id}`) || []
+  );
 
   // Get highly rated media from similar users
   const { data: similarUserMedia } = await supabase
     .from("user_media")
-    .select("media_item_id, rating, media_items(*)")
+    .select("media_type, media_id, rating")
     .in("user_id", similarUserIds)
-    .gte("rating", 8) // Only very highly rated
-    .not("media_item_id", "in", `(${Array.from(userMediaIds).join(",")})`);
+    .gte("rating", 8); // Only very highly rated
 
   if (!similarUserMedia) {
     return [];
   }
 
-  // Group by media item and score
-  const itemScores = new Map<string, { count: number; rating: number }>();
+  // Filter out items the user already has
+  const newItems = similarUserMedia.filter((um) => {
+    const key = `${um.media_type}:${um.media_id}`;
+    return !userMediaKeys.has(key);
+  });
 
-  similarUserMedia.forEach((um: any) => {
-    const mediaId = um.media_item_id;
-    if (!itemScores.has(mediaId)) {
-      itemScores.set(mediaId, { count: 0, rating: 0 });
+  // Group by media item and score
+  const itemScores = new Map<string, { count: number; rating: number; mediaType: string; mediaId: string }>();
+
+  newItems.forEach((um) => {
+    const key = `${um.media_type}:${um.media_id}`;
+    if (!itemScores.has(key)) {
+      itemScores.set(key, {
+        count: 0,
+        rating: 0,
+        mediaType: um.media_type,
+        mediaId: um.media_id,
+      });
     }
-    const score = itemScores.get(mediaId)!;
+    const score = itemScores.get(key)!;
     score.count += 1;
     score.rating = Math.max(score.rating, um.rating || 0);
   });
 
+  // Fetch the actual media items
+  const mediaToFetch: UserMedia[] = Array.from(itemScores.values()).map((score) => ({
+    id: '', // Not used in fetch
+    user_id: '', // Not used in fetch
+    media_type: score.mediaType as any,
+    media_id: score.mediaId,
+    rating: undefined,
+    timestamp: new Date(),
+    tags: undefined,
+    created_at: new Date(),
+    updated_at: new Date(),
+  }));
+
+  const mediaMap = await fetchMediaItemsForUserMedia(mediaToFetch);
+
   const recommendations: Recommendation[] = [];
 
-  for (const [mediaId, score] of itemScores.entries()) {
-    const found = similarUserMedia.find(
-      (um: any) => um.media_item_id === mediaId
-    );
-    const mediaItem = found?.media_items;
+  for (const [key, score] of itemScores.entries()) {
+    const mediaItem = mediaMap.get(score.mediaId);
 
-    if (mediaItem && found) {
+    if (mediaItem) {
       recommendations.push({
-        media: mediaItem as unknown as MediaItem,
+        media: mediaItem,
         reason: `Liked by ${score.count} highly compatible user${score.count > 1 ? "s" : ""}`,
         score: score.count * 10 + score.rating,
         source: "similar_users",
@@ -314,4 +384,3 @@ export async function getAllRecommendations(
   // Sort by score and return top N
   return unique.sort((a, b) => b.score - a.score).slice(0, limit);
 }
-

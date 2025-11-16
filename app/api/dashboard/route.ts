@@ -217,7 +217,7 @@ export async function GET(request: NextRequest) {
       recentMatches: enrichedMatches,
       suggestedMatches,
       recentActivity: recentActivity || [],
-      connectedIntegrations: sources?.map((s: Source) => s.source_name) || [],
+      connectedIntegrations: sources?.map((s: any) => s.source_name) || [],
     });
   } catch (error) {
     console.error("Error fetching dashboard data:", error);
