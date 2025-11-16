@@ -17,6 +17,7 @@ import {
   Sparkles,
   Heart,
   TrendingUp,
+  Smile,
 } from "lucide-react";
 import { Logo } from "./logo";
 import { useState } from "react";
@@ -55,6 +56,11 @@ export function Sidebar({ className = "" }: SidebarProps) {
       name: "Taste Match",
       href: "/taste-match",
       icon: Heart,
+    },
+    {
+      name: "Mood Discovery",
+      href: "/mood-discovery",
+      icon: Smile,
     },
     {
       name: "AI Chat",
