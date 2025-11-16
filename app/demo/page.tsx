@@ -13,9 +13,10 @@ import {
   Sparkles,
   Play,
   Pause,
+  TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
-import { getRandomDemoMedia, DemoMediaItem } from "@/lib/demo-data";
+import { getRandomDemoMedia, getAllDemoMedia, DemoMediaItem } from "@/lib/demo-data";
 
 export default function DemoPage() {
   const [media, setMedia] = useState<DemoMediaItem[]>([]);
@@ -321,6 +322,26 @@ function ResultsView({
     ([, a], [, b]) => b - a
   )[0];
 
+  // Generate recommendations based on loved items
+  const lovedGenres = new Set<string>();
+  loved.forEach(({ item }) => {
+    item.genres?.forEach((genre) => lovedGenres.add(genre));
+  });
+
+  const ratedIds = new Set(Array.from(ratings.keys()));
+  const allMedia = getAllDemoMedia();
+
+  const recommendations = allMedia
+    .filter((item) => !ratedIds.has(item.id))
+    .map((item) => {
+      const matchingGenres = item.genres?.filter((g) => lovedGenres.has(g)) || [];
+      const score = matchingGenres.length;
+      return { item, score, matchingGenres };
+    })
+    .filter((rec) => rec.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 6);
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="container mx-auto max-w-4xl">
@@ -386,28 +407,125 @@ function ResultsView({
           </div>
         </div>
 
+        {/* Recommendations Preview */}
+        {recommendations.length > 0 && (
+          <div className="mb-12 animate-fadeInUp animate-delay-250">
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-full text-sm font-medium mb-4">
+                <Sparkles className="w-4 h-4" />
+                AI-Powered Recommendations
+              </div>
+              <h2 className="font-display text-3xl font-bold mb-3 letterpress">
+                Based on your taste, we'd recommend:
+              </h2>
+              <p className="text-muted-foreground">
+                These are just a taste. Sign up to get personalized recommendations from your entire library
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+              {recommendations.map((rec, index) => (
+                <motion.div
+                  key={rec.item.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 * index }}
+                  className="paper-card overflow-hidden hover:border-primary/50 transition-all hover:-translate-y-1"
+                >
+                  <div className="relative aspect-[2/3] bg-muted/50">
+                    <img
+                      src={rec.item.imageUrl}
+                      alt={rec.item.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='600'%3E%3Crect fill='%23f3f4f6' width='400' height='600'/%3E%3Ctext x='50%25' y='50%25' font-family='monospace' font-size='16' fill='%239ca3af' text-anchor='middle' dy='.3em'%3ENo Image%3C/text%3E%3C/svg%3E";
+                      }}
+                    />
+                    <div className="absolute top-2 left-2 px-2 py-1 bg-black/80 backdrop-blur-sm rounded text-xs font-medium capitalize">
+                      {rec.item.type}
+                    </div>
+                    <div className="absolute top-2 right-2 px-2 py-1 bg-primary/90 backdrop-blur-sm rounded text-xs font-bold flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" />
+                      {Math.round((rec.score / lovedGenres.size) * 100)}% match
+                    </div>
+                  </div>
+                  <div className="p-3">
+                    <h3 className="font-semibold text-sm mb-1 line-clamp-2">
+                      {rec.item.title}
+                    </h3>
+                    {(rec.item.author || rec.item.artist) && (
+                      <p className="text-xs text-muted-foreground mb-2 truncate">
+                        {rec.item.author || rec.item.artist}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-1">
+                      {rec.matchingGenres.slice(0, 2).map((genre) => (
+                        <span
+                          key={genre}
+                          className="px-2 py-0.5 bg-primary/10 text-primary rounded text-[10px] font-medium"
+                        >
+                          {genre}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            <div className="text-center p-6 bg-gradient-to-r from-primary/5 via-secondary/5 to-accent/5 rounded-xl border border-border">
+              <p className="text-sm text-muted-foreground mb-3">
+                <span className="font-mono font-semibold text-foreground">{recommendations.length}</span> recommendations
+                generated based on your taste in <span className="font-mono font-semibold text-foreground">{lovedGenres.size}</span> genres
+              </p>
+              <p className="text-xs text-muted-foreground">
+                With a full account, you'll get unlimited personalized recommendations across all media types
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* CTA */}
         <div className="text-center animate-fadeInUp animate-delay-300">
           <div className="paper-card p-12 rule-double">
+            <div className="inline-block stamp bg-primary text-primary-foreground text-sm mb-6">
+              🎉 Limited Beta Access
+            </div>
             <h2 className="font-display text-4xl font-bold mb-6 letterpress">
-              Ready to find your kindred spirits?
+              Get unlimited personalized recommendations
             </h2>
             <p className="text-lg text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
-              Sign up to discover users with your exact taste, get personalized
-              recommendations, and connect through what you love
+              Join the waitlist to get early access to Kindred. Import your library from Goodreads,
+              MyAnimeList, Letterboxd, and Spotify, then discover personalized recommendations and
+              connect with people who share your exact taste.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-6 justify-center mb-8">
-              <Link href="/auth/signup">
-                <button className="stamp bg-primary text-primary-foreground text-lg hover:bg-primary/90 transition-all hover:-translate-y-1 hover:shadow-lg">
-                  Sign Up - It's Free
-                </button>
-              </Link>
               <Link href="/waitlist">
-                <button className="stamp border-2 border-secondary text-secondary hover:bg-secondary/10 text-lg transition-all hover:-translate-y-1">
-                  Join Waitlist
+                <button className="stamp bg-primary text-primary-foreground text-lg hover:bg-primary/90 transition-all hover:-translate-y-1 hover:shadow-lg">
+                  Join Waitlist - Skip the Line
                 </button>
               </Link>
+              <Link href="/auth/signup">
+                <button className="stamp border-2 border-border hover:bg-accent/10 text-lg transition-all hover:-translate-y-1">
+                  Sign Up Now
+                </button>
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground max-w-2xl mx-auto mb-6">
+              <div className="flex items-center justify-center gap-2">
+                <Sparkles className="w-4 h-4 text-primary" />
+                <span>Unlimited recommendations</span>
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                <Heart className="w-4 h-4 text-primary" />
+                <span>Find taste matches</span>
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                <TrendingUp className="w-4 h-4 text-primary" />
+                <span>Track across platforms</span>
+              </div>
             </div>
 
             <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider">
