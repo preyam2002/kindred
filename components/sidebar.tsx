@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { Logo } from "./logo";
 import { GlobalSearch } from "./global-search";
+import { NotificationCenter } from "./notification-center";
 import { useState } from "react";
 
 interface SidebarProps {
@@ -204,9 +205,14 @@ export function Sidebar({ className = "" }: SidebarProps) {
             <Logo />
           </div>
 
-          {/* Global Search */}
+          {/* Global Search & Notifications */}
           <div className="p-4 border-b border-border">
-            <GlobalSearch />
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <GlobalSearch />
+              </div>
+              <NotificationCenter />
+            </div>
           </div>
 
           {/* Navigation */}

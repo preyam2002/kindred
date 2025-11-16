@@ -144,6 +144,31 @@ export interface Recommendation {
   created_at: Date;
 }
 
+export type NotificationType =
+  | "match"
+  | "challenge"
+  | "comment"
+  | "reply"
+  | "streak"
+  | "recommendation"
+  | "system";
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  link?: string;
+  is_read: boolean;
+  created_at: Date;
+  updated_at: Date;
+  // Optional metadata
+  actor_id?: string; // User who triggered the notification
+  actor_username?: string;
+  actor_avatar?: string;
+}
+
 // Union type for all media items
 export type MediaItem = Book | Anime | Manga | Movie | Music;
 
