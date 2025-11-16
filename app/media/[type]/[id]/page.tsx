@@ -14,6 +14,7 @@ import {
   Trash2,
   ArrowLeft,
   Users,
+  ArrowUpDown,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -57,6 +58,7 @@ export default function MediaDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [showSpoilers, setShowSpoilers] = useState(false);
   const [socialProof, setSocialProof] = useState<any>(null);
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "highest_rated" | "most_liked">("newest");
 
   useEffect(() => {
     if (mediaId && mediaType) {
@@ -221,6 +223,26 @@ export default function MediaDetailPage() {
 
   const userComment = comments.find((c) => c.user_id === session?.user?.id);
 
+  // Sort comments based on selected option
+  const sortedComments = [...comments].sort((a, b) => {
+    switch (sortBy) {
+      case "newest":
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      case "oldest":
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      case "highest_rated":
+        // Put comments without ratings at the end
+        if (!a.rating && !b.rating) return 0;
+        if (!a.rating) return 1;
+        if (!b.rating) return -1;
+        return b.rating - a.rating;
+      case "most_liked":
+        return b.likes_count - a.likes_count;
+      default:
+        return 0;
+    }
+  });
+
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
@@ -315,11 +337,29 @@ export default function MediaDetailPage() {
       {/* Comments Section */}
       <div className="container mx-auto px-6 py-12 max-w-4xl">
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-6">
-            <MessageCircle className="w-6 h-6 text-primary" />
-            <h2 className="text-2xl font-bold">
-              Reviews & Thoughts ({comments.length})
-            </h2>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <MessageCircle className="w-6 h-6 text-primary" />
+              <h2 className="text-2xl font-bold">
+                Reviews & Thoughts ({comments.length})
+              </h2>
+            </div>
+
+            {comments.length > 0 && (
+              <div className="flex items-center gap-2">
+                <ArrowUpDown className="w-4 h-4 text-muted-foreground" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="px-3 py-2 border border-border rounded-lg bg-background text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="highest_rated">Highest Rated</option>
+                  <option value="most_liked">Most Liked</option>
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Comment Form */}
@@ -405,7 +445,7 @@ export default function MediaDetailPage() {
 
           {/* Comments List */}
           <div className="space-y-6">
-            {comments.map((comment) => (
+            {sortedComments.map((comment) => (
               <motion.div
                 key={comment.id}
                 initial={{ opacity: 0, y: 20 }}
