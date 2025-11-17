@@ -546,11 +546,19 @@ export async function syncSpotifyData(
       }
 
       // Use played_at if available (for recently played), otherwise added_at, otherwise now
-      const timestamp = played_at 
-        ? new Date(played_at) 
-        : added_at 
-          ? new Date(added_at) 
-          : new Date();
+      // Ensure timestamp is always a valid Date
+      let timestamp = new Date();
+      if (played_at) {
+        const date = new Date(played_at);
+        if (!isNaN(date.getTime())) {
+          timestamp = date;
+        }
+      } else if (added_at) {
+        const date = new Date(added_at);
+        if (!isNaN(date.getTime())) {
+          timestamp = date;
+        }
+      }
 
       userMediaRecords.push({
         user_id: userId,

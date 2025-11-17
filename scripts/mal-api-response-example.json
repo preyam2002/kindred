@@ -1,0 +1,74 @@
+{
+  "data": [
+    {
+      "node": {
+        "id": 1,
+        "title": "Cowboy Bebop",
+        "main_picture": {
+          "medium": "https://cdn.myanimelist.net/images/anime/4/19644.jpg"
+        },
+        "genres": [
+          { "id": 1, "name": "Action" },
+          { "id": 2, "name": "Sci-Fi" }
+        ],
+        "media_type": "tv",
+        "num_episodes": 26,
+        "status": "finished_airing",
+        "mean": 8.75
+      },
+      "list_status": {
+        "status": "completed",
+        "score": 9,
+        "updated_at": "2024-01-15T10:30:00+00:00"
+      }
+    },
+    {
+      "node": {
+        "id": 2,
+        "title": "Attack on Titan",
+        "main_picture": {
+          "medium": "https://cdn.myanimelist.net/images/anime/10/47347.jpg"
+        },
+        "genres": [
+          { "id": 1, "name": "Action" },
+          { "id": 3, "name": "Drama" }
+        ],
+        "media_type": "tv",
+        "num_episodes": 25,
+        "status": "finished_airing",
+        "mean": 9.10
+      },
+      "list_status": {
+        "status": "completed",
+        "score": 0,
+        "updated_at": "2024-01-10T08:20:00+00:00"
+      }
+    },
+    {
+      "node": {
+        "id": 3,
+        "title": "One Piece",
+        "main_picture": {
+          "medium": "https://cdn.myanimelist.net/images/anime/6/73245.jpg"
+        },
+        "genres": [
+          { "id": 1, "name": "Action" },
+          { "id": 4, "name": "Adventure" }
+        ],
+        "media_type": "tv",
+        "num_episodes": null,
+        "status": "currently_airing",
+        "mean": 9.00
+      },
+      "list_status": {
+        "status": "watching",
+        "score": 8,
+        "updated_at": "2024-01-20T14:15:00+00:00"
+      }
+    }
+  ],
+  "paging": {
+    "next": "https://api.myanimelist.net/v2/users/preyam/animelist?offset=10&limit=10"
+  }
+}
+

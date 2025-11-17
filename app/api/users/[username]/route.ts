@@ -61,7 +61,7 @@ export async function GET(
     // Get top-rated items
     const { data: topRated } = await supabase
       .from("user_media")
-      .select(\`
+      .select(`
         media_id,
         media_type,
         rating,
@@ -70,7 +70,7 @@ export async function GET(
         book (id, title, poster_url, author),
         movie (id, title, poster_url),
         music (id, title, poster_url, artist)
-      \`)
+      `)
       .eq("user_email", userEmail)
       .gte("rating", 8)
       .order("rating", { ascending: false })

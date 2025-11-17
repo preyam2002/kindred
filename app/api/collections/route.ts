@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 // GET /api/collections - Get all collections (user's own + public)
 export async function GET(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId"); // Optional: get collections by specific user
 
@@ -55,7 +54,7 @@ export async function GET(request: Request) {
 // POST /api/collections - Create a new collection
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
 
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

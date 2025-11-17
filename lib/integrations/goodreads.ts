@@ -213,7 +213,19 @@ export async function importGoodreadsCSV(
         continue;
       }
 
-      const timestamp = book.dateRead || book.dateAdded || new Date();
+      // Ensure timestamp is always a valid Date
+      let timestamp = new Date();
+      if (book.dateRead) {
+        const date = new Date(book.dateRead);
+        if (!isNaN(date.getTime())) {
+          timestamp = date;
+        }
+      } else if (book.dateAdded) {
+        const date = new Date(book.dateAdded);
+        if (!isNaN(date.getTime())) {
+          timestamp = date;
+        }
+      }
       const rating = book.rating && book.rating > 0 ? book.rating * 2 : undefined;
 
       userMediaRecords.push({
@@ -463,7 +475,14 @@ export async function importGoodreadsScraped(
         continue;
       }
 
-      const timestamp = book.dateRead ? new Date(book.dateRead) : new Date();
+      // Ensure timestamp is always a valid Date
+      let timestamp = new Date();
+      if (book.dateRead) {
+        const date = new Date(book.dateRead);
+        if (!isNaN(date.getTime())) {
+          timestamp = date;
+        }
+      }
       const rating = book.rating && book.rating > 0 ? book.rating * 2 : undefined;
 
       userMediaRecords.push({

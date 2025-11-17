@@ -74,7 +74,7 @@ export default function UserProfilePage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(\`/api/users/\${username}\`);
+      const res = await fetch(`/api/users/${username}`);
       if (!res.ok) {
         if (res.status === 404) {
           setError("User not found");
@@ -289,7 +289,7 @@ export default function UserProfilePage() {
               {profile.top_items.map((item) => (
                 <Link
                   key={item.id}
-                  href={\`/media/\${item.type}/\${item.id}\`}
+                  href={`/media/${item.type}/${item.id}`}
                   className="group"
                 >
                   <div className="relative aspect-[2/3] bg-muted rounded-lg overflow-hidden mb-2">

@@ -1,34 +1,45 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
 
-    if (!session?.user?.email) {
+    const userId = session?.user?.id;
+    const userEmail = session?.user?.email;
+
+    if (!userId && !userEmail) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const supabase = createClient();
 
-    // Get user ID from email
-    const { data: user } = await supabase
-      .from("users")
-      .select("id")
-      .eq("email", session.user.email)
-      .single();
+    // Get user ID - use session user ID if available, otherwise look up by email
+    let userIdToUse = userId;
+    if (!userIdToUse && userEmail) {
+      const { data: user } = await supabase
+        .from("users")
+        .select("id")
+        .eq("email", userEmail)
+        .single();
+      
+      if (!user) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 });
+      }
+      
+      userIdToUse = user.id;
+    }
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    if (!userIdToUse) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Fetch notifications for the user
     const { data: notifications, error } = await supabase
       .from("notifications")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", userIdToUse)
       .order("created_at", { ascending: false })
       .limit(50);
 

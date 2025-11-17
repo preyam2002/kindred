@@ -150,7 +150,7 @@ export default function OnboardingPage() {
             <motion.div
               className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
               initial={{ width: "0%" }}
-              animate={{ width: \`\${((currentStep + 1) / steps.length) * 100}%\` }}
+              animate={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
               transition={{ duration: 0.3 }}
             />
           </div>

@@ -1,7 +1,7 @@
 -- Create media_comments table for user reviews and thoughts
 CREATE TABLE IF NOT EXISTS media_comments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   media_id TEXT NOT NULL,
   media_type TEXT NOT NULL CHECK (media_type IN ('anime', 'manga', 'book', 'movie', 'music')),
   content TEXT NOT NULL,
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS media_comments (
 CREATE TABLE IF NOT EXISTS comment_likes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   comment_id UUID NOT NULL REFERENCES media_comments(id) ON DELETE CASCADE,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(comment_id, user_id)
 );
@@ -40,15 +40,15 @@ CREATE POLICY "Users can view all comments"
 
 CREATE POLICY "Users can create their own comments"
   ON media_comments FOR INSERT
-  WITH CHECK (auth.uid()::text = user_id);
+  WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can update their own comments"
   ON media_comments FOR UPDATE
-  USING (auth.uid()::text = user_id);
+  USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete their own comments"
   ON media_comments FOR DELETE
-  USING (auth.uid()::text = user_id);
+  USING (auth.uid() = user_id);
 
 -- RLS Policies for comment_likes
 CREATE POLICY "Users can view all likes"
@@ -57,8 +57,8 @@ CREATE POLICY "Users can view all likes"
 
 CREATE POLICY "Users can create their own likes"
   ON comment_likes FOR INSERT
-  WITH CHECK (auth.uid()::text = user_id);
+  WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete their own likes"
   ON comment_likes FOR DELETE
-  USING (auth.uid()::text = user_id);
+  USING (auth.uid() = user_id);

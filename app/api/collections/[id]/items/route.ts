@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 // POST /api/collections/[id]/items - Add item to collection
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const { id } = await params;
+    const session = await auth();
 
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -32,7 +32,7 @@ export async function POST(
     const { data: collection } = await supabase
       .from("collections")
       .select("user_id, is_collaborative")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (!collection) {
@@ -61,7 +61,7 @@ export async function POST(
     const { data: existing } = await supabase
       .from("collection_items")
       .select("id")
-      .eq("collection_id", params.id)
+      .eq("collection_id", id)
       .eq("media_type", media_type)
       .eq("media_id", media_id)
       .single();
@@ -77,7 +77,7 @@ export async function POST(
     const { data: lastItem } = await supabase
       .from("collection_items")
       .select("position")
-      .eq("collection_id", params.id)
+      .eq("collection_id", id)
       .order("position", { ascending: false })
       .limit(1)
       .single();
@@ -87,7 +87,7 @@ export async function POST(
     const { data: item, error } = await supabase
       .from("collection_items")
       .insert({
-        collection_id: params.id,
+        collection_id: id,
         media_type,
         media_id,
         added_by_user_id: user.id,

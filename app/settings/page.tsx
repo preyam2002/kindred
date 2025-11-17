@@ -651,7 +651,6 @@ export default function SettingsPage() {
                 </motion.div>
               );
             })}
-          </div>
 
           <div className="mt-12 p-6 border border-border rounded-lg bg-card">
             <h2 className="text-xl font-bold mb-2">Sync Data</h2>

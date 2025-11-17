@@ -1,22 +1,22 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 // GET /api/collections/[id] - Get a specific collection with its items
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const { id } = await params;
+    const session = await auth();
     const supabase = createClient();
 
     // Get collection
     const { data: collection, error: collectionError } = await supabase
       .from("collections")
       .select("*")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (collectionError || !collection) {
@@ -36,7 +36,7 @@ export async function GET(
     const { data: items, error: itemsError } = await supabase
       .from("collection_items")
       .select("*")
-      .eq("collection_id", params.id)
+      .eq("collection_id", id)
       .order("position", { ascending: true });
 
     if (itemsError) {
@@ -75,10 +75,11 @@ export async function GET(
 // PUT /api/collections/[id] - Update a collection
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const { id } = await params;
+    const session = await auth();
 
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -101,7 +102,7 @@ export async function PUT(
     const { data: collection } = await supabase
       .from("collections")
       .select("user_id")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (!collection || collection.user_id !== user.id) {
@@ -120,7 +121,7 @@ export async function PUT(
         is_collaborative,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", params.id)
+      .eq("id", id)
       .select()
       .single();
 
@@ -145,10 +146,11 @@ export async function PUT(
 // DELETE /api/collections/[id] - Delete a collection
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const { id } = await params;
+    const session = await auth();
 
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -171,7 +173,7 @@ export async function DELETE(
     const { data: collection } = await supabase
       .from("collections")
       .select("user_id")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (!collection || collection.user_id !== user.id) {
@@ -181,7 +183,7 @@ export async function DELETE(
     const { error } = await supabase
       .from("collections")
       .delete()
-      .eq("id", params.id);
+      .eq("id", id);
 
     if (error) {
       console.error("Error deleting collection:", error);

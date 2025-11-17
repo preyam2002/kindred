@@ -219,7 +219,19 @@ export async function importLetterboxdCSV(
         continue;
       }
 
-      const timestamp = film.watchedDate || film.diaryDate || new Date();
+      // Ensure timestamp is always a valid Date
+      let timestamp = new Date();
+      if (film.watchedDate) {
+        const date = new Date(film.watchedDate);
+        if (!isNaN(date.getTime())) {
+          timestamp = date;
+        }
+      } else if (film.diaryDate) {
+        const date = new Date(film.diaryDate);
+        if (!isNaN(date.getTime())) {
+          timestamp = date;
+        }
+      }
       const rating = film.rating ? Math.round(film.rating * 2) : undefined;
 
       userMediaRecords.push({
@@ -473,7 +485,14 @@ export async function importLetterboxdScraped(
         continue;
       }
 
-      const timestamp = film.watchedDate ? new Date(film.watchedDate) : new Date();
+      // Ensure timestamp is always a valid Date
+      let timestamp = new Date();
+      if (film.watchedDate) {
+        const date = new Date(film.watchedDate);
+        if (!isNaN(date.getTime())) {
+          timestamp = date;
+        }
+      }
       const rating = film.rating ? Math.round(film.rating * 2) : undefined;
 
       userMediaRecords.push({

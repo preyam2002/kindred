@@ -120,7 +120,7 @@ export default function YearWrappedPage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-primary/10 via-secondary/5 to-accent/10 flex items-center justify-center">
         <div className="text-center">
           <Sparkles className="w-12 h-12 mx-auto mb-4 text-primary animate-pulse" />
           <div className="text-lg font-semibold">Generating your wrapped...</div>
@@ -131,7 +131,7 @@ export default function YearWrappedPage() {
 
   if (status === "unauthenticated") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gradient-to-br from-primary/10 via-secondary/5 to-accent/10 flex items-center justify-center p-6">
         <div className="text-center max-w-md">
           <div className="inline-block p-4 bg-primary/10 border-2 border-primary/20 mb-6">
             <Calendar className="w-12 h-12 text-primary" />
@@ -155,7 +155,7 @@ export default function YearWrappedPage() {
 
   if (!wrappedData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gradient-to-br from-primary/10 via-secondary/5 to-accent/10 flex items-center justify-center p-6">
         <div className="text-center max-w-md">
           <h1 className="text-2xl font-bold mb-4">Not Enough Data</h1>
           <p className="text-muted-foreground mb-6">
@@ -173,11 +173,11 @@ export default function YearWrappedPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-secondary/5 to-accent/10 flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-10 left-10 w-64 h-64 bg-primary/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-10 right-10 w-96 h-96 bg-secondary/10 rounded-full blur-3xl"></div>
+        <div className="absolute top-10 left-10 w-64 h-64 bg-primary/5 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-10 right-10 w-96 h-96 bg-secondary/5 rounded-full blur-3xl"></div>
       </div>
 
       {/* Progress dots */}
@@ -217,7 +217,7 @@ export default function YearWrappedPage() {
       <AnimatePresence mode="wait">
         {currentCard === 0 && (
           <Card key="welcome">
-            <div className="w-full h-full bg-gradient-to-br from-primary to-secondary flex flex-col items-center justify-center text-white p-8">
+            <div className="w-full h-full bg-gradient-to-br from-primary/80 to-secondary/70 flex flex-col items-center justify-center text-white p-8">
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
@@ -238,7 +238,7 @@ export default function YearWrappedPage() {
 
         {currentCard === 1 && (
           <Card key="total-items">
-            <div className="w-full h-full bg-gradient-to-br from-accent to-primary flex flex-col items-center justify-center text-white p-8">
+            <div className="w-full h-full bg-gradient-to-br from-accent/80 to-primary/80 flex flex-col items-center justify-center text-white p-8">
               <div className="text-center">
                 <p className="text-2xl mb-6">This year, you experienced</p>
                 <motion.div
@@ -274,7 +274,7 @@ export default function YearWrappedPage() {
 
         {currentCard === 2 && (
           <Card key="top-genre">
-            <div className="w-full h-full bg-gradient-to-br from-secondary to-accent flex flex-col items-center justify-center text-white p-8">
+            <div className="w-full h-full bg-gradient-to-br from-secondary/70 to-accent/70 flex flex-col items-center justify-center text-white p-8">
               <Crown className="w-16 h-16 mb-6" />
               <p className="text-2xl mb-6 text-center">Your most-watched genre was</p>
               <motion.div
@@ -294,7 +294,7 @@ export default function YearWrappedPage() {
 
         {currentCard === 3 && (
           <Card key="top-items">
-            <div className="w-full h-full bg-gradient-to-br from-primary to-accent flex flex-col items-center justify-center text-white p-8">
+            <div className="w-full h-full bg-gradient-to-br from-primary/80 to-accent/80 flex flex-col items-center justify-center text-white p-8">
               <Trophy className="w-12 h-12 mb-4" />
               <h2 className="text-3xl font-bold mb-8 text-center">Your Top Picks</h2>
               <div className="grid grid-cols-3 gap-3 mb-6">
@@ -335,7 +335,7 @@ export default function YearWrappedPage() {
 
         {currentCard === 4 && (
           <Card key="love-stat">
-            <div className="w-full h-full bg-gradient-to-br from-pink-500 to-red-500 flex flex-col items-center justify-center text-white p-8">
+            <div className="w-full h-full bg-gradient-to-br from-primary/80 to-accent/80 flex flex-col items-center justify-center text-white p-8">
               <Heart className="w-16 h-16 mb-6 fill-current" />
               <p className="text-2xl mb-6 text-center">You absolutely loved</p>
               <motion.div
@@ -356,7 +356,7 @@ export default function YearWrappedPage() {
 
         {currentCard === 5 && (
           <Card key="personality">
-            <div className="w-full h-full bg-gradient-to-br from-purple-600 to-blue-600 flex flex-col items-center justify-center text-white p-8">
+            <div className="w-full h-full bg-gradient-to-br from-primary/70 via-secondary/60 to-accent/70 flex flex-col items-center justify-center text-white p-8">
               <Target className="w-12 h-12 mb-6" />
               <h2 className="text-3xl font-bold mb-8 text-center">Your Taste Personality</h2>
 
@@ -416,7 +416,7 @@ export default function YearWrappedPage() {
 
         {currentCard === 6 && (
           <Card key="fun-facts">
-            <div className="w-full h-full bg-gradient-to-br from-yellow-500 to-orange-500 flex flex-col items-center justify-center text-white p-8">
+            <div className="w-full h-full bg-gradient-to-br from-secondary/70 to-accent/70 flex flex-col items-center justify-center text-white p-8">
               <Zap className="w-12 h-12 mb-6" />
               <h2 className="text-3xl font-bold mb-8 text-center">Fun Facts</h2>
 
@@ -439,7 +439,7 @@ export default function YearWrappedPage() {
 
         {currentCard === 7 && (
           <Card key="finale">
-            <div className="w-full h-full bg-gradient-to-br from-primary via-secondary to-accent flex flex-col items-center justify-center text-white p-8">
+            <div className="w-full h-full bg-gradient-to-br from-primary/80 via-secondary/70 to-accent/80 flex flex-col items-center justify-center text-white p-8">
               <Sparkles className="w-16 h-16 mb-6" />
               <h2 className="text-4xl font-bold mb-6 text-center">
                 What a year!

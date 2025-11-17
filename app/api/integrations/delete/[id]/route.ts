@@ -10,19 +10,31 @@ export async function DELETE(
     const session = await auth();
     const { id } = await params;
 
-    if (!session?.user?.email) {
+    const userId = session?.user?.id;
+    const userEmail = session?.user?.email;
+
+    if (!userId && !userEmail) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user
-    const { data: user } = await supabase
-      .from("users")
-      .select("id")
-      .eq("email", session.user.email)
-      .single();
+    // Get user ID - use session user ID if available, otherwise look up by email
+    let userIdToUse = userId;
+    if (!userIdToUse && userEmail) {
+      const { data: user } = await supabase
+        .from("users")
+        .select("id")
+        .eq("email", userEmail)
+        .single();
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      if (!user) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 });
+      }
+
+      userIdToUse = user.id;
+    }
+
+    if (!userIdToUse) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Verify ownership and delete
@@ -30,7 +42,7 @@ export async function DELETE(
       .from("sources")
       .delete()
       .eq("id", id)
-      .eq("user_id", user.id);
+      .eq("user_id", userIdToUse);
 
     if (error) {
       return NextResponse.json(

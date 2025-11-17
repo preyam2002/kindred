@@ -1,5 +1,5 @@
-// MyAnimeList API integration utilities using client_auth (API key only)
-// Note: OAuth is not required - public lists can be accessed with just CLIENT_ID
+// MyAnimeList API integration utilities
+// Supports both client_auth (API key only) and OAuth for accessing user-specific data like ratings
 import { supabase } from "@/lib/db/supabase";
 import { cachedFetch, CacheKeys } from "@/lib/cache";
 import crypto from "crypto";
@@ -10,33 +10,37 @@ const MAL_CLIENT_ID = process.env.MYANIMELIST_CLIENT_ID || "";
 const MAL_CLIENT_SECRET = process.env.MYANIMELIST_CLIENT_SECRET || "";
 
 /**
- * Get user's anime list using client_auth (API key)
- * Per API docs: client_auth is sufficient for reading public lists
+ * Get user's anime list
+ * Uses OAuth token if provided (for user-specific data like ratings), otherwise uses client_auth
  * Cached for 1 hour to prevent rate limiting
  */
 export async function getMALAnimeList(
   username: string,
   limit: number = 100,
   offset: number = 0,
-  status?: "watching" | "completed" | "on_hold" | "dropped" | "plan_to_watch"
+  status?: "watching" | "completed" | "on_hold" | "dropped" | "plan_to_watch",
+  accessToken?: string
 ): Promise<any> {
-  const cacheKey = `${CacheKeys.malUserAnimeList(username)}:${limit}:${offset}${status ? `:${status}` : ""}`;
+  const cacheKey = `${CacheKeys.malUserAnimeList(username)}:${limit}:${offset}${status ? `:${status}` : ""}${accessToken ? ":oauth" : ""}`;
 
   return cachedFetch(
     cacheKey,
     async () => {
-      const fields = "id,title,main_picture,mean,genres,media_type,num_episodes,status,my_list_status";
+      const fields = "id,title,main_picture,mean,genres,media_type,num_episodes,status,my_list_status{score,status,updated_at}";
       let url = `${MAL_API_URL}/users/${username}/animelist?fields=${fields}&limit=${limit}&offset=${offset}`;
 
       if (status) {
         url += `&status=${status}`;
       }
 
-      const response = await fetch(url, {
-        headers: {
-          "X-MAL-CLIENT-ID": MAL_CLIENT_ID,
-        },
-      });
+      const headers: Record<string, string> = {};
+      if (accessToken) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+      } else {
+        headers["X-MAL-CLIENT-ID"] = MAL_CLIENT_ID;
+      }
+
+      const response = await fetch(url, { headers });
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => response.statusText);
@@ -50,33 +54,37 @@ export async function getMALAnimeList(
 }
 
 /**
- * Get user's manga list using client_auth (API key)
- * Per API docs: client_auth is sufficient for reading public lists
+ * Get user's manga list
+ * Uses OAuth token if provided (for user-specific data like ratings), otherwise uses client_auth
  * Cached for 1 hour to prevent rate limiting
  */
 export async function getMALMangaList(
   username: string,
   limit: number = 100,
   offset: number = 0,
-  status?: "reading" | "completed" | "on_hold" | "dropped" | "plan_to_read"
+  status?: "reading" | "completed" | "on_hold" | "dropped" | "plan_to_read",
+  accessToken?: string
 ): Promise<any> {
-  const cacheKey = `${CacheKeys.malUserMangaList(username)}:${limit}:${offset}${status ? `:${status}` : ""}`;
+  const cacheKey = `${CacheKeys.malUserMangaList(username)}:${limit}:${offset}${status ? `:${status}` : ""}${accessToken ? ":oauth" : ""}`;
 
   return cachedFetch(
     cacheKey,
     async () => {
-      const fields = "id,title,main_picture,mean,genres,media_type,num_chapters,status,my_list_status";
+      const fields = "id,title,main_picture,mean,genres,media_type,num_chapters,status,my_list_status{score,status,updated_at}";
       let url = `${MAL_API_URL}/users/${username}/mangalist?fields=${fields}&limit=${limit}&offset=${offset}`;
 
       if (status) {
         url += `&status=${status}`;
       }
 
-      const response = await fetch(url, {
-        headers: {
-          "X-MAL-CLIENT-ID": MAL_CLIENT_ID,
-        },
-      });
+      const headers: Record<string, string> = {};
+      if (accessToken) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+      } else {
+        headers["X-MAL-CLIENT-ID"] = MAL_CLIENT_ID;
+      }
+
+      const response = await fetch(url, { headers });
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => response.statusText);
@@ -91,8 +99,7 @@ export async function getMALMangaList(
 
 /**
  * Generate PKCE code challenge and verifier for OAuth
- * @deprecated OAuth is no longer required for MAL - public lists only need CLIENT_ID
- * Kept for backwards compatibility
+ * Required for MAL OAuth flow
  */
 export function generatePKCE(): { codeVerifier: string; codeChallenge: string } {
   const codeVerifier = crypto.randomBytes(32).toString("base64url");
@@ -105,8 +112,6 @@ export function generatePKCE(): { codeVerifier: string; codeChallenge: string } 
 
 /**
  * Get MAL OAuth authorization URL
- * @deprecated OAuth is no longer required for MAL - public lists only need CLIENT_ID
- * Kept for backwards compatibility
  */
 export function getMALAuthUrl(state: string, codeChallenge: string, callbackUrl: string): string {
   const params = new URLSearchParams({
@@ -122,8 +127,6 @@ export function getMALAuthUrl(state: string, codeChallenge: string, callbackUrl:
 
 /**
  * Exchange authorization code for access token
- * @deprecated OAuth is no longer required for MAL - public lists only need CLIENT_ID
- * Kept for backwards compatibility
  */
 export async function exchangeMALToken(
   code: string,
@@ -160,8 +163,6 @@ export async function exchangeMALToken(
 
 /**
  * Refresh MAL access token
- * @deprecated OAuth is no longer required for MAL - public lists only need CLIENT_ID
- * Kept for backwards compatibility
  */
 export async function refreshMALToken(refreshToken: string): Promise<{
   access_token: string;
@@ -191,9 +192,62 @@ export async function refreshMALToken(refreshToken: string): Promise<{
 }
 
 /**
- * Get MAL user profile
- * @deprecated OAuth is no longer required for MAL - public lists only need CLIENT_ID
- * Kept for backwards compatibility
+ * Get a valid access token, refreshing if necessary
+ */
+export async function getValidMALAccessToken(
+  userId: string
+): Promise<string | null> {
+  const { data: malSource, error } = await supabase
+    .from("sources")
+    .select("access_token, refresh_token, expires_at")
+    .eq("user_id", userId)
+    .eq("source_name", "myanimelist")
+    .single();
+
+  if (error || !malSource) {
+    return null;
+  }
+
+  // If we have a valid access token, return it
+  if (malSource.access_token && malSource.expires_at) {
+    const expiresAt = new Date(malSource.expires_at);
+    const now = new Date();
+    // Refresh if token expires in less than 5 minutes
+    if (expiresAt > new Date(now.getTime() + 5 * 60 * 1000)) {
+      return malSource.access_token;
+    }
+  }
+
+  // Token expired or missing, try to refresh
+  if (malSource.refresh_token) {
+    try {
+      const tokens = await refreshMALToken(malSource.refresh_token);
+      const expiresAt = new Date();
+      expiresAt.setSeconds(expiresAt.getSeconds() + tokens.expires_in);
+
+      await supabase
+        .from("sources")
+        .update({
+          access_token: tokens.access_token,
+          refresh_token: tokens.refresh_token,
+          expires_at: expiresAt.toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", userId)
+        .eq("source_name", "myanimelist");
+
+      return tokens.access_token;
+    } catch (error) {
+      console.error("Error refreshing MAL token:", error);
+      return null;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Get MAL user profile using OAuth access token
  */
 export async function getMALUserProfile(accessToken: string): Promise<{
   id: number;
@@ -234,6 +288,9 @@ export async function syncMALData(
   }
 
   const malUsername = malSource.source_user_id;
+  
+  // Get OAuth access token if available (for ratings)
+  const accessToken = await getValidMALAccessToken(userId);
 
   try {
     let animeImported = 0;
@@ -251,7 +308,7 @@ export async function syncMALData(
       let hasMore = true;
 
       while (hasMore) {
-        const animeData = await getMALAnimeList(malUsername, limit, offset);
+        const animeData = await getMALAnimeList(malUsername, limit, offset, undefined, accessToken || undefined);
         const animeList = animeData.data || [];
 
         for (const item of animeList) {
@@ -278,7 +335,7 @@ export async function syncMALData(
       let hasMore = true;
 
       while (hasMore) {
-        const mangaData = await getMALMangaList(malUsername, limit, offset);
+        const mangaData = await getMALMangaList(malUsername, limit, offset, undefined, accessToken || undefined);
         const mangaList = mangaData.data || [];
 
         for (const item of mangaList) {
@@ -443,7 +500,7 @@ export async function syncMALData(
       media_type: string;
       media_id: string;
       rating?: number;
-      timestamp: Date;
+      timestamp: string; // ISO string for database
       tags?: string[];
     }> = [];
 
@@ -454,9 +511,14 @@ export async function syncMALData(
         continue;
       }
 
-      const timestamp = item.listStatus?.updated_at
-        ? new Date(item.listStatus.updated_at)
-        : new Date();
+      // Ensure timestamp is always a valid Date, then convert to ISO string
+      let timestamp = new Date();
+      if (item.listStatus?.updated_at) {
+        const date = new Date(item.listStatus.updated_at);
+        if (!isNaN(date.getTime())) {
+          timestamp = date;
+        }
+      }
 
       const rating = item.listStatus?.score && item.listStatus.score > 0
         ? item.listStatus.score
@@ -467,7 +529,7 @@ export async function syncMALData(
         media_type: "anime",
         media_id: animeId,
         rating,
-        timestamp,
+        timestamp: timestamp.toISOString(),
         tags: item.listStatus?.status ? [item.listStatus.status] : undefined,
       });
     }
@@ -479,9 +541,14 @@ export async function syncMALData(
         continue;
       }
 
-      const timestamp = item.listStatus?.updated_at
-        ? new Date(item.listStatus.updated_at)
-        : new Date();
+      // Ensure timestamp is always a valid Date, then convert to ISO string
+      let timestamp = new Date();
+      if (item.listStatus?.updated_at) {
+        const date = new Date(item.listStatus.updated_at);
+        if (!isNaN(date.getTime())) {
+          timestamp = date;
+        }
+      }
 
       const rating = item.listStatus?.score && item.listStatus.score > 0
         ? item.listStatus.score
@@ -492,7 +559,7 @@ export async function syncMALData(
         media_type: "manga",
         media_id: mangaId,
         rating,
-        timestamp,
+        timestamp: timestamp.toISOString(),
         tags: item.listStatus?.status ? [item.listStatus.status] : undefined,
       });
     }
