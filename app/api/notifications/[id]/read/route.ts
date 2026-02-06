@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -26,11 +26,13 @@ export async function POST(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    const { id: notificationId } = await params;
+
     // Mark notification as read
     const { error } = await supabase
       .from("notifications")
       .update({ is_read: true, updated_at: new Date().toISOString() })
-      .eq("id", params.id)
+      .eq("id", notificationId)
       .eq("user_id", user.id);
 
     if (error) {

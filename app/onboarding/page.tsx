@@ -29,7 +29,7 @@ const steps = [
           <Sparkles className="w-16 h-16 text-white" />
         </motion.div>
         <p className="text-xl text-muted-foreground max-w-md mx-auto">
-          Let's set up your profile and find your kindred spirits
+          Let&apos;s set up your profile and find your kindred spirits
         </p>
       </div>
     ),
@@ -61,7 +61,7 @@ const steps = [
       <div className="text-center">
         <Users className="w-16 h-16 mx-auto mb-6 text-purple-500" />
         <p className="text-lg text-muted-foreground mb-6 max-w-md mx-auto">
-          We'll find people with similar taste to yours. The more compatible you are, the better the recommendations!
+          We&apos;ll find people with similar taste to yours. The more compatible you are, the better the recommendations!
         </p>
         <div className="grid grid-cols-3 gap-4 max-w-md mx-auto mb-6">
           {[70, 85, 92].map((score, index) => (

@@ -97,13 +97,13 @@ export async function GET(request: NextRequest) {
           media_id: item.media_id,
           media_type: item.media_type,
           title: mediaItem.title,
-          cover: mediaItem.cover_image || mediaItem.poster_url,
+          cover: mediaItem.poster_url,
           genre: mediaItem.genre,
           friend_count: item.friend_count,
           avg_rating: Math.round(item.avg_rating * 10) / 10,
-          author: mediaItem.author,
-          artist: mediaItem.artist,
-          year: mediaItem.year,
+          author: (mediaItem as { author?: string }).author,
+          artist: (mediaItem as { artist?: string }).artist,
+          year: (mediaItem as { year?: number }).year,
         };
       })
       .filter(Boolean);

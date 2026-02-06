@@ -6,12 +6,11 @@ import { ReactNode } from "react";
 import { Sidebar } from "./sidebar";
 
 export function AuthenticatedLayout({ children }: { children: ReactNode }) {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const pathname = usePathname();
 
   // Don't show sidebar on auth pages or home page when unauthenticated
   const isAuthPage = pathname?.startsWith("/auth");
-  const isHomePage = pathname === "/";
   const shouldShowSidebar = status === "authenticated" && !isAuthPage;
 
   if (!shouldShowSidebar) {

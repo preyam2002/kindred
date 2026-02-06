@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 // DELETE /api/queue/[id] - Remove item from queue
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -27,11 +27,13 @@ export async function DELETE(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    const { id: itemId } = await params;
+
     // Check ownership
     const { data: item } = await supabase
       .from("queue_items")
       .select("user_id")
-      .eq("id", params.id)
+      .eq("id", itemId)
       .single();
 
     if (!item || item.user_id !== user.id) {
@@ -41,7 +43,7 @@ export async function DELETE(
     const { error } = await supabase
       .from("queue_items")
       .delete()
-      .eq("id", params.id);
+      .eq("id", itemId);
 
     if (error) {
       console.error("Error removing from queue:", error);
@@ -64,7 +66,7 @@ export async function DELETE(
 // PATCH /api/queue/[id] - Update queue item (priority, notes, position)
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -86,11 +88,13 @@ export async function PATCH(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    const { id: itemId } = await params;
+
     // Check ownership
     const { data: item } = await supabase
       .from("queue_items")
       .select("user_id")
-      .eq("id", params.id)
+      .eq("id", itemId)
       .single();
 
     if (!item || item.user_id !== user.id) {
@@ -100,7 +104,7 @@ export async function PATCH(
     const body = await request.json();
     const { priority, notes, position } = body;
 
-    const updates: any = {};
+    const updates: { priority?: number; notes?: string; position?: number } = {};
     if (priority !== undefined) updates.priority = priority;
     if (notes !== undefined) updates.notes = notes;
     if (position !== undefined) updates.position = position;
@@ -108,7 +112,7 @@ export async function PATCH(
     const { data: updated, error } = await supabase
       .from("queue_items")
       .update(updates)
-      .eq("id", params.id)
+      .eq("id", itemId)
       .select()
       .single();
 

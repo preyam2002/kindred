@@ -112,7 +112,7 @@ export async function getCollaborativeRecommendations(
   const mediaToFetch: UserMedia[] = Array.from(itemScores.values()).map((score) => ({
     id: '', // Not used in fetch
     user_id: '', // Not used in fetch
-    media_type: score.mediaType as any,
+    media_type: score.mediaType as "book" | "anime" | "manga" | "movie" | "music",
     media_id: score.mediaId,
     rating: undefined,
     timestamp: new Date(),
@@ -212,7 +212,7 @@ export async function getContentBasedRecommendations(
         .limit(50);
 
       if (data) {
-        data.forEach((item: any) => {
+        data.forEach((item: { id: string; [key: string]: unknown }) => {
           const key = `${type}:${item.id}`;
           if (!userMediaKeys.has(key)) {
             candidateMedia.push({ ...item, type } as MediaItem);
@@ -324,7 +324,7 @@ export async function getSimilarUserRecommendations(
   const mediaToFetch: UserMedia[] = Array.from(itemScores.values()).map((score) => ({
     id: '', // Not used in fetch
     user_id: '', // Not used in fetch
-    media_type: score.mediaType as any,
+    media_type: score.mediaType as "book" | "anime" | "manga" | "movie" | "music",
     media_id: score.mediaId,
     rating: undefined,
     timestamp: new Date(),
@@ -364,9 +364,9 @@ export async function getAllRecommendations(
   limit: number = 20
 ): Promise<Recommendation[]> {
   const [collaborative, content, similarUsers] = await Promise.all([
-    getCollaborativeRecommendations(userId, limit / 3),
-    getContentBasedRecommendations(userId, limit / 3),
-    getSimilarUserRecommendations(userId, limit / 3),
+    getCollaborativeRecommendations(userId, Math.floor(limit / 3)),
+    getContentBasedRecommendations(userId, Math.floor(limit / 3)),
+    getSimilarUserRecommendations(userId, Math.floor(limit / 3)),
   ]);
 
   // Combine and deduplicate by media ID

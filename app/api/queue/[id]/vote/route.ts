@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 // POST /api/queue/[id]/vote - Toggle vote on a queue item
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -27,11 +27,13 @@ export async function POST(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    const { id: queueItemId } = await params;
+
     // Get queue item and verify it exists
     const { data: queueItem } = await supabase
       .from("queue_items")
       .select("*, users!queue_items_user_id_fkey(id, username, email)")
-      .eq("id", params.id)
+      .eq("id", queueItemId)
       .single();
 
     if (!queueItem) {
@@ -70,7 +72,7 @@ export async function POST(
     const { data: existingVote } = await supabase
       .from("queue_votes")
       .select("*")
-      .eq("queue_item_id", params.id)
+      .eq("queue_item_id", queueItemId)
       .eq("user_id", user.id)
       .single();
 
@@ -95,7 +97,7 @@ export async function POST(
     } else {
       // Add vote
       const { error } = await supabase.from("queue_votes").insert({
-        queue_item_id: params.id,
+        queue_item_id: queueItemId,
         user_id: user.id,
       });
 
@@ -119,7 +121,7 @@ export async function POST(
         is_read: false,
         actor_id: user.id,
         actor_username: user.username,
-        actor_avatar: session.user.avatar,
+        actor_avatar: session.user.image,
       });
     }
 
@@ -127,7 +129,7 @@ export async function POST(
     const { count } = await supabase
       .from("queue_votes")
       .select("*", { count: "exact", head: true })
-      .eq("queue_item_id", params.id);
+      .eq("queue_item_id", queueItemId);
 
     return NextResponse.json({
       success: true,
@@ -146,7 +148,7 @@ export async function POST(
 // GET /api/queue/[id]/vote - Get votes for a queue item
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -155,6 +157,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { id: queueItemId } = await params;
     const supabase = createClient();
 
     // Get current user ID
@@ -172,7 +175,7 @@ export async function GET(
     const { data: queueItem } = await supabase
       .from("queue_items")
       .select("user_id")
-      .eq("id", params.id)
+      .eq("id", queueItemId)
       .single();
 
     if (!queueItem) {
@@ -199,7 +202,7 @@ export async function GET(
         users!queue_votes_user_id_fkey(id, username, email, avatar)
       `
       )
-      .eq("queue_item_id", params.id)
+      .eq("queue_item_id", queueItemId)
       .order("created_at", { ascending: false });
 
     if (error) {

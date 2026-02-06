@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     // Get matches count
     const { data: matches } = await supabase
       .from("matches")
-      .select("similarity_score")
+      .select("similarity_score, user1_id, user2_id")
       .or(`user1_id.eq.${userId},user2_id.eq.${userId}`);
 
     let cardData: any = {

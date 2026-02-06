@@ -33,7 +33,7 @@ export default function NotFound() {
         >
           <h1 className="text-4xl font-bold mb-4">Page Not Found</h1>
           <p className="text-lg text-muted-foreground mb-8">
-            Oops! The page you're looking for seems to have wandered off into the void.
+            Oops! The page you&apos;re looking for seems to have wandered off into the void.
             It might have been moved, deleted, or never existed in the first place.
           </p>
         </motion.div>

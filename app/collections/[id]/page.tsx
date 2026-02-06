@@ -107,12 +107,12 @@ export default function CollectionDetailPage() {
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-4xl font-bold">{collection.title}</h1>
                 {collection.is_public ? (
-                  <Globe className="w-5 h-5 text-muted-foreground" title="Public" />
+                  <Globe className="w-5 h-5 text-muted-foreground" />
                 ) : (
-                  <Lock className="w-5 h-5 text-muted-foreground" title="Private" />
+                  <Lock className="w-5 h-5 text-muted-foreground" />
                 )}
                 {collection.is_collaborative && (
-                  <Users className="w-5 h-5 text-muted-foreground" title="Collaborative" />
+                  <Users className="w-5 h-5 text-muted-foreground" />
                 )}
               </div>
               {collection.description && (

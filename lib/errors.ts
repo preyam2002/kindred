@@ -5,7 +5,7 @@ export class AppError extends Error {
     message: string,
     public statusCode: number = 500,
     public code?: string,
-    public details?: any
+    public details?: unknown
   ) {
     super(message);
     this.name = "AppError";
@@ -13,7 +13,7 @@ export class AppError extends Error {
 }
 
 export class ValidationError extends AppError {
-  constructor(message: string, details?: any) {
+  constructor(message: string, details?: unknown) {
     super(message, 400, "VALIDATION_ERROR", details);
     this.name = "ValidationError";
   }
@@ -46,7 +46,7 @@ export class ForbiddenError extends AppError {
 export function formatErrorResponse(error: unknown): {
   error: string;
   code?: string;
-  details?: any;
+  details?: unknown;
 } {
   if (error instanceof AppError) {
     return {
@@ -95,9 +95,9 @@ export async function withRetry<T>(
  * Safe async handler wrapper for API routes
  */
 export function asyncHandler(
-  handler: (req: Request, params?: any) => Promise<Response>
+  handler: (req: Request, params?: Record<string, string>) => Promise<Response>
 ) {
-  return async (req: Request, params?: any): Promise<Response> => {
+  return async (req: Request, params?: Record<string, string>): Promise<Response> => {
     try {
       return await handler(req, params);
     } catch (error) {

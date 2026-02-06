@@ -35,9 +35,13 @@ export async function GET(request: NextRequest) {
       .gte("similarity_score", 60)
       .limit(20);
 
-    let trendingItems = [];
+    interface TrendingItem {
+      media_id: string;
+      friend_count: number;
+    }
+    let trendingItems: TrendingItem[] = [];
     if (matches && matches.length > 0) {
-      const friendIds = matches.map((m: any) =>
+      const friendIds = matches.map((m: { user1_id: string; user2_id: string }) =>
         m.user1_id === userId ? m.user2_id : m.user1_id
       );
 
@@ -53,8 +57,8 @@ export async function GET(request: NextRequest) {
         .limit(50);
 
       if (recentRatings && recentRatings.length > 0) {
-        const mediaCount = new Map();
-        recentRatings.forEach((r: any) => {
+        const mediaCount = new Map<string, number>();
+        recentRatings.forEach((r: { media_id: string }) => {
           const key = r.media_id;
           mediaCount.set(key, (mediaCount.get(key) || 0) + 1);
         });
@@ -92,7 +96,7 @@ export async function GET(request: NextRequest) {
           .select("user_id, media_id, rating, updated_at")
           .in(
             "user_id",
-            matches.map((m: any) =>
+            matches.map((m: { user1_id: string; user2_id: string }) =>
               m.user1_id === userId ? m.user2_id : m.user1_id
             )
           )

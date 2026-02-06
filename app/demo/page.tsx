@@ -169,7 +169,7 @@ export default function DemoPage() {
             <X className="w-3 h-3 text-accent" /> Not for me
           </span>
           <span className="flex items-center gap-2">
-            <Star className="w-3 h-3 text-secondary" /> It's okay
+            <Star className="w-3 h-3 text-secondary" /> It&apos;s okay
           </span>
           <span className="flex items-center gap-2">
             <Heart className="w-3 h-3 text-primary" /> Love it!

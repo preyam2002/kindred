@@ -1,10 +1,20 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Twitter from "next-auth/providers/twitter";
-import type { Account, User, Session } from "next-auth";
+import type { Account, User as NextAuthUser, Session } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import type { NextAuthConfig } from "next-auth";
 import { supabase } from "@/lib/db/supabase";
+
+// Extended types for custom properties
+interface ExtendedUser extends NextAuthUser {
+  dbUserId?: string;
+  dbUsername?: string;
+}
+
+interface TwitterAccount extends Account {
+  screen_name?: string;
+}
 
 export const authOptions: NextAuthConfig = {
   secret: process.env.NEXTAUTH_SECRET,
@@ -24,7 +34,7 @@ export const authOptions: NextAuthConfig = {
     }),
   ],
   callbacks: {
-    async signIn({ user, account }: { user: User; account?: Account | null }) {
+    async signIn({ user, account }: { user: ExtendedUser; account?: Account | null }) {
       // Handle Google OAuth (always has email)
       if (account?.provider === "google" && user.email) {
         // Check if user exists
@@ -99,7 +109,7 @@ export const authOptions: NextAuthConfig = {
           }
 
           const screenName =
-            (account as any).screen_name || user.name || `twitter_${twitterId}`;
+            (account as TwitterAccount).screen_name || user.name || `twitter_${twitterId}`;
 
           // Generate a placeholder email if none provided (Twitter often doesn't provide email)
           const email = user.email || `twitter_${twitterId}@twitter.local`;
@@ -192,8 +202,8 @@ export const authOptions: NextAuthConfig = {
                   email: insertedUser.email,
                 });
                 // Store the user ID immediately so JWT callback can use it
-                (user as any).dbUserId = insertedUser.id;
-                (user as any).dbUsername = insertedUser.username;
+                user.dbUserId = insertedUser.id;
+                user.dbUsername = insertedUser.username;
                 break;
               }
 
@@ -277,8 +287,8 @@ export const authOptions: NextAuthConfig = {
                     "User already exists with this email, skipping insert"
                   );
                   // Store the user ID for JWT callback
-                  (user as any).dbUserId = existingByEmail.id;
-                  (user as any).dbUsername = existingByEmail.username;
+                  user.dbUserId = existingByEmail.id;
+                  user.dbUsername = existingByEmail.username;
                   insertError = null;
                   break;
                 }
@@ -304,8 +314,8 @@ export const authOptions: NextAuthConfig = {
             }
           } else {
             // User exists - store ID for JWT callback
-            (user as any).dbUserId = existingUser.id;
-            (user as any).dbUsername = existingUser.username;
+            user.dbUserId = existingUser.id;
+            user.dbUsername = existingUser.username;
 
             // Update existing user (avatar and username might have changed)
             const updateData: { avatar?: string; username?: string } = {};
@@ -355,21 +365,20 @@ export const authOptions: NextAuthConfig = {
       }
       return true;
     },
-    async jwt({ token, user, account }: { token: JWT; user?: User; account?: Account | null }) {
+    async jwt({ token, user, account }: { token: JWT; user?: ExtendedUser; account?: Account | null }) {
       // When user signs in, store their ID in the token
       if (user) {
         // Check if signIn callback stored the user ID (for Twitter/OAuth users)
-        if ((user as any).dbUserId) {
-          token.id = (user as any).dbUserId;
-          token.username =
-            (user as any).dbUsername || (user as any).username || user.name;
+        if (user.dbUserId) {
+          token.id = user.dbUserId;
+          token.username = user.dbUsername || user.name || undefined;
           return token;
         }
 
         // If user already has an ID (from credentials provider), use it
         if (user.id) {
           token.id = user.id;
-          token.username = (user as any).username || user.name;
+          token.username = user.dbUsername || user.name || undefined;
         } else if (user.email) {
           // For OAuth providers, fetch user ID from database
           const { data: dbUser, error: emailError } = await supabase

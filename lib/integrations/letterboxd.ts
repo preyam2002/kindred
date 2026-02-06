@@ -139,7 +139,7 @@ export async function importLetterboxdCSV(
           const film = films.find(f => {
             const sourceId = f.year ? `${f.title} (${f.year})` : f.title;
             return sourceId === item.source_item_id;
-          });
+          }) as ParsedLetterboxdFilm | undefined;
           if (film) {
             try {
               const posterResult = await fetchMoviePoster(film.title, film.year);
@@ -406,7 +406,7 @@ export async function importLetterboxdScraped(
           const film = profile.films.find(f => {
             const sourceId = f.year ? `${f.title} (${f.year})` : f.title;
             return sourceId === item.source_item_id;
-          });
+          }) as LetterboxdFilm | undefined;
           if (film && !item.poster_url) {
             try {
               const posterResult = await fetchMoviePoster(film.title, film.year);

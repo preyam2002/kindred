@@ -1,11 +1,73 @@
 // Spotify OAuth 2.0 integration utilities
 import { supabase } from "@/lib/db/supabase";
-import { cachedFetch, CacheKeys } from "@/lib/cache";
+import { cachedFetch } from "@/lib/cache";
 
 const SPOTIFY_BASE_URL = "https://accounts.spotify.com";
 const SPOTIFY_API_URL = "https://api.spotify.com/v1";
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || "";
 const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET || "";
+
+// Type definitions for Spotify API responses
+interface SpotifyImage {
+  url: string;
+  height?: number;
+  width?: number;
+}
+
+interface SpotifyArtist {
+  id: string;
+  name: string;
+  genres?: string[];
+}
+
+interface SpotifyAlbum {
+  id: string;
+  name: string;
+  images?: SpotifyImage[];
+  artists?: SpotifyArtist[];
+}
+
+interface SpotifyTrack {
+  id: string;
+  name: string;
+  artists?: SpotifyArtist[];
+  album?: SpotifyAlbum;
+  duration_ms?: number;
+}
+
+interface SpotifyUserProfile {
+  id: string;
+  display_name?: string;
+  email?: string;
+  images?: SpotifyImage[];
+}
+
+interface SpotifySavedTracksResponse {
+  items: Array<{
+    track?: SpotifyTrack;
+    added_at?: string;
+  }>;
+  total: number;
+  offset: number;
+  limit: number;
+  next?: string | null;
+}
+
+interface SpotifyTopTracksResponse {
+  items: SpotifyTrack[];
+  total: number;
+  offset: number;
+  limit: number;
+  next?: string | null;
+}
+
+interface SpotifyRecentlyPlayedResponse {
+  items: Array<{
+    track?: SpotifyTrack;
+    played_at?: string;
+  }>;
+  next?: string | null;
+}
 
 /**
  * Get authorization URL for Spotify
@@ -118,7 +180,7 @@ export async function refreshSpotifyToken(
 /**
  * Get authenticated user's profile
  */
-export async function getSpotifyUserProfile(accessToken: string): Promise<any> {
+export async function getSpotifyUserProfile(accessToken: string): Promise<SpotifyUserProfile> {
   const response = await fetch(`${SPOTIFY_API_URL}/me`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -140,7 +202,7 @@ export async function getSpotifySavedTracks(
   accessToken: string,
   limit: number = 50,
   offset: number = 0
-): Promise<any> {
+): Promise<SpotifySavedTracksResponse> {
   // Use a hash of the access token for cache key (first 8 chars for uniqueness)
   const tokenHash = accessToken.substring(0, 8);
   const cacheKey = `spotify:saved_tracks:${tokenHash}:${limit}:${offset}`;
@@ -175,7 +237,7 @@ export async function getSpotifyTopTracks(
   accessToken: string,
   timeRange: "short_term" | "medium_term" | "long_term" = "medium_term",
   limit: number = 50
-): Promise<any> {
+): Promise<SpotifyTopTracksResponse> {
   const tokenHash = accessToken.substring(0, 8);
   const cacheKey = `spotify:top_tracks:${tokenHash}:${timeRange}:${limit}`;
 
@@ -205,11 +267,19 @@ export async function getSpotifyTopTracks(
  * Get user's top artists
  * Cached for 1 hour to prevent rate limiting (top artists change slowly)
  */
+interface SpotifyTopArtistsResponse {
+  items: SpotifyArtist[];
+  total: number;
+  offset: number;
+  limit: number;
+  next?: string | null;
+}
+
 export async function getSpotifyTopArtists(
   accessToken: string,
   timeRange: "short_term" | "medium_term" | "long_term" = "medium_term",
   limit: number = 50
-): Promise<any> {
+): Promise<SpotifyTopArtistsResponse> {
   const tokenHash = accessToken.substring(0, 8);
   const cacheKey = `spotify:top_artists:${tokenHash}:${timeRange}:${limit}`;
 
@@ -242,7 +312,7 @@ export async function getSpotifyTopArtists(
 export async function getSpotifyRecentlyPlayed(
   accessToken: string,
   limit: number = 50
-): Promise<any> {
+): Promise<SpotifyRecentlyPlayedResponse> {
   const tokenHash = accessToken.substring(0, 8);
   const cacheKey = `spotify:recently_played:${tokenHash}:${limit}`;
 
@@ -317,8 +387,8 @@ export async function syncSpotifyData(
         });
 
         for (const item of tracks) {
-          const track = item.track || item;
-          if (track && track.id) {
+          const track = item.track;
+          if (track?.id) {
             allTracks.push({
               track,
               added_at: item.added_at,

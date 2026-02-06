@@ -5,8 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 // DELETE /api/friends/[id] - Reject friend request or remove friend
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id: friendshipId } = await params;
   try {
     const session = await auth();
 
@@ -31,7 +32,7 @@ export async function DELETE(
     const { data: friendship } = await supabase
       .from("friendships")
       .select("*")
-      .eq("id", params.id)
+      .eq("id", friendshipId)
       .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`)
       .single();
 
@@ -46,7 +47,7 @@ export async function DELETE(
     const { error } = await supabase
       .from("friendships")
       .delete()
-      .eq("id", params.id);
+      .eq("id", friendshipId);
 
     if (error) {
       console.error("Error removing friendship:", error);

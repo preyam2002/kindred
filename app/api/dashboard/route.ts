@@ -3,7 +3,7 @@ import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 import { calculateMashScore } from "@/lib/matching";
 import { fetchMediaItemsForUserMedia } from "@/lib/db/media-helpers";
-import type { UserMedia, Match, User, Source } from "@/types/database";
+import type { UserMedia, Match, User } from "@/types/database";
 
 export async function GET(request: NextRequest) {
   try {
@@ -217,7 +217,7 @@ export async function GET(request: NextRequest) {
       recentMatches: enrichedMatches,
       suggestedMatches,
       recentActivity: recentActivity || [],
-      connectedIntegrations: sources?.map((s: any) => s.source_name) || [],
+      connectedIntegrations: sources?.map((s: { source_name: string }) => s.source_name) || [],
     });
   } catch (error) {
     console.error("Error fetching dashboard data:", error);

@@ -1,201 +1,240 @@
-# kindred
+# Kindred
 
-A social platform that aggregates your tracked activity from Goodreads, MyAnimeList, Letterboxd, and Spotify to connect you with people who share your tastes.
+A social taste-matching platform that aggregates your tracked media activity from Goodreads, MyAnimeList, Letterboxd, and Spotify to connect you with people who share your tastes.
 
-## Features
+**Live Demo**: [seamless-phi.vercel.app](https://seamless-phi.vercel.app)
 
-- **Authentication**: OAuth (Google) and email-based sign-in
-- **Profile Pages**: View user profiles at `/u/[username]` with their tracked media
-- **Mash-Up**: Compare two users at `/mash/[user1]-[user2]` with MashScore calculation
-- **Integrations**: Connect external platforms (placeholder for MVP)
-- **Matching Engine**: Calculate similarity scores based on overlapping tastes
+## What is Kindred?
+
+Kindred is a social discovery platform that aggregates your media activity from various sources (Goodreads, MyAnimeList, Letterboxd, Spotify) and helps you discover people with similar tastes. The platform calculates a "MashScore" to quantify taste compatibility between users.
 
 ## Tech Stack
 
-- **Framework**: Next.js 15 (App Router)
-- **Styling**: Tailwind CSS v4
-- **UI Components**: Shadcn/UI
-- **Database**: PostgreSQL (Supabase)
-- **Authentication**: NextAuth.js
-- **Animations**: Framer Motion
+- **Framework**: Next.js 16.0.1 with App Router
+- **Language**: TypeScript 5
+- **UI Library**: React 19.2.0
+- **Styling**: Tailwind CSS v4 with tw-animate-css
+- **Animations**: Framer Motion 12.23.24
+- **Database**: Supabase (PostgreSQL) via @supabase/supabase-js 2.78.0 and @supabase/ssr 0.7.0
+- **Authentication**: NextAuth.js 5.0.0-beta.30
+- **3D Graphics**: Three.js (@react-three/fiber 9.4.0, @react-three/drei 10.7.7) with three 0.181.1
+- **AI Integration**: Anthropic SDK 0.68.0, OpenAI 6.9.0
+- **Image Generation**: html2canvas 1.4.1, @vercel/og 0.8.5
+- **Testing**: Vitest 4.0.9 with @vitest/ui
+- **Icons**: Lucide React 0.552.0
+- **UI Components**: Radix UI (@radix-ui/react-dialog, @radix-ui/react-label, @radix-ui/react-slot)
+- **Utilities**: clsx 2.1.1, class-variance-authority 0.7.1, tailwind-merge 3.3.1
+- **Date**: date-fns 4.1.0
+- **Archive**: adm-zip 0.5.16
+- **Web Scraping**: cheerio 1.1.2
 
-## Getting Started
+## Key Features
 
-### Prerequisites
+### Taste Matching
+- Aggregates media from Goodreads, MyAnimeList, Letterboxd, and Spotify
+- AI-powered taste compatibility scoring (MashScore)
+- Personalized recommendations based on taste overlap
 
-- Node.js 18+ 
-- npm or yarn
-- Supabase account (for database)
+### Media Management
+- Personal library management with ratings and favorites
+- Media collections for organizing content
+- Import from CSV files and OAuth integrations
+- Queue management for watch lists
+- Mood-based discovery
 
-### Setup
+### Social Features
+- Friend connections and friend requests
+- Blind match discovery (swipe-based matching)
+- Taste Twins - find users with identical preferences
+- Activity feeds showing friend activities
+- Group consensus suggestions for group viewing
+- Watch Together sessions for synchronized viewing
+- Real-time chat interface
 
-1. Clone the repository:
-```bash
-git clone <your-repo-url>
-cd kindred
-```
+### Gamification
+- Taste challenges with streaks
+- Roulette for random media discovery
+- AI-generated Taste Art
+- Leaderboards and rankings
+- Share cards for social media
+- Year Wrapped summaries
 
-2. Install dependencies:
-```bash
-npm install
-```
-
-3. Set up environment variables:
-```bash
-cp .env.example .env.local
-```
-
-Fill in your environment variables:
-- `NEXTAUTH_SECRET`: Generate with `openssl rand -base64 32`
-- `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase anon key
-- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`: For Google OAuth (optional)
-- `TWITTER_CLIENT_ID` and `TWITTER_CLIENT_SECRET`: For X (Twitter) OAuth (optional)
-- `MYANIMELIST_CLIENT_ID` and `MYANIMELIST_CLIENT_SECRET`: For MyAnimeList OAuth (get from https://myanimelist.net/apiconfig)
-- `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET`: For Spotify OAuth (get from https://developer.spotify.com/dashboard)
-
-4. Set up the database:
-   - Create a new Supabase project
-   - Run the SQL from `lib/db/schema.sql` in your Supabase SQL editor
-
-5. Run the development server:
-```bash
-npm run dev
-```
-
-Open [http://localhost:5001](http://localhost:5001) in your browser.
+### AI-Powered Features
+- Taste DNA analysis and visualization
+- Personalized recommendations using OpenAI/Claude
+- AI-generated insights about your taste profile
+- Automated content suggestions
 
 ## Project Structure
 
 ```
 kindred/
-├── app/
-│   ├── api/              # API routes
-│   ├── auth/             # Authentication pages
-│   ├── mash/             # Mash-up comparison pages
-│   ├── u/                # User profile pages
-│   ├── settings/         # Settings and integrations
-│   └── page.tsx          # Landing page
-├── components/           # React components
-├── lib/
-│   ├── db/              # Database utilities
-│   └── matching.ts      # Matching engine
-├── types/               # TypeScript types
-└── public/             # Static assets
+├── app/                          # Next.js App Router
+│   ├── page.tsx                  # Landing page with CTA
+│   ├── layout.tsx                # Root layout with providers
+│   ├── globals.css               # Global styles and animations
+│   ├── error.tsx                 # Error boundary
+│   ├── not-found.tsx             # 404 page
+│   ├── dashboard/                # Main dashboard with stats
+│   ├── discover/                 # Discovery page for finding users
+│   ├── matches/                  # Taste matches listing
+│   ├── friends/                  # Friends management
+│   ├── library/                  # Personal library and ratings
+│   ├── collections/              # User collections
+│   ├── recommendations/          # AI-powered recommendations
+│   ├── taste-dna/                # Taste analysis visualization
+│   ├── taste-match/              # Matching interface
+│   ├── taste-twins/              # Find similar users
+│   ├── taste-art/                # AI art generation
+│   ├── taste-challenge/          # Challenge system
+│   ├── roulette/                 # Random discovery spinner
+│   ├── mood-discovery/           # Mood-based discovery
+│   ├── queue/                    # Watch queue management
+│   ├── notifications/            # Notifications center
+│   ├── chat/                     # Chat interface
+│   ├── watch-together/           # Watch together sessions
+│   ├── group-consensus/          # Group suggestion engine
+│   ├── blind-match/              # Blind matching (tinder-style)
+│   ├── social-feed/              # Social activity feed
+│   ├── share-cards/              # Generate shareable cards
+│   ├── leaderboards/             # User rankings
+│   ├── year-wrapped/             # Annual summary
+│   ├── analytics/                # Analytics dashboard
+│   ├── u/[username]/             # User public profiles
+│   │   ├── page.tsx              # Profile page
+│   │   └── queue/                # Public queue view
+│   ├── [user1]/[user2]/          # Compare two users
+│   ├── mash/[username]/          # Taste mash page
+│   ├── auth/                     # Authentication pages
+│   │   ├── login/
+│   │   └── signup/
+│   ├── api/                      # API routes
+│   │   ├── auth/[...nextauth]/   # NextAuth configuration
+│   │   ├── friends/              # Friend management API
+│   │   ├── library/              # Library API
+│   │   ├── collections/          # Collections API
+│   │   ├── matches/              # Matches API
+│   │   ├── recommendations/      # Recommendations API
+│   │   ├── taste-dna/            # Taste DNA API
+│   │   ├── insights/             # Insights API
+│   │   ├── activity/             # Activity API
+│   │   ├── challenges/           # Challenges API
+│   │   ├── roulette/             # Roulette API
+│   │   ├── blind-match/          # Blind match API
+│   │   ├── mood-discovery/       # Mood API
+│   │   ├── watch-together/       # Watch together API
+│   │   ├── group-consensus/      # Consensus API
+│   │   ├── chat/                 # Chat API
+│   │   ├── comments/             # Comments API
+│   │   ├── mash/                 # Mash API
+│   │   ├── share/                # Share API
+│   │   ├── year-wrapped/         # Wrapped API
+│   │   ├── social-proof/         # Social proof API
+│   │   ├── analytics/            # Analytics API
+│   │   ├── cover-images/         # Cover images API
+│   │   ├── dashboard-enhanced/   # Enhanced dashboard
+│   │   ├── leaderboards/         # Leaderboards API
+│   │   ├── waitlist/             # Waitlist API
+│   │   ├── media/                # Media API
+│   │   └── taste-art/            # Taste art API
+│   └── test/                     # Test pages
+├── components/                   # React components
+│   ├── providers.tsx             # Context providers (auth, etc.)
+│   └── authenticated-layout.tsx  # Layout wrapper for auth
+├── lib/                          # Utilities
+│   ├── utils.ts                  # General utilities
+│   ├── auth/                     # Authentication logic
+│   ├── integrations/             # Third-party API integrations
+│   └── supabase/                 # Supabase client
+├── scripts/                      # Database scripts
+│   └── reset-and-setup.sql       # Database setup
+├── public/                       # Static assets
+├── package.json
+├── tsconfig.json
+├── next.config.js
+└── tailwind.config.ts
 ```
 
-## Color Scheme
+## NPM Scripts
 
-The design uses a minimalist black, pink, and purple color scheme:
-- **Background**: Black (`oklch(0 0 0)`)
-- **Primary**: Purple (`oklch(0.5 0.25 330)`)
-- **Secondary**: Pink (`oklch(0.65 0.25 340)`)
+```bash
+npm run dev           # Start dev server on port 5001
+npm run build         # Build for production
+npm run start         # Start production server on port 5001
+npm run lint          # Run ESLint
+npm run test          # Run Vitest tests in watch mode
+npm run test:run      # Run tests once
+npm run db:reset      # Display database reset SQL
+npm run db:help       # Show database reset help
+```
 
-## MVP Status
+## Database Schema
 
-This is an MVP with the following implemented:
-- ✅ Authentication (email + Google OAuth)
-- ✅ Landing page with animations
-- ✅ User profile pages
-- ✅ Mash-up comparison pages
-- ✅ Matching engine
-- ✅ Database schema
-- ✅ Goodreads CSV import integration
-- ✅ Letterboxd CSV import integration
-- ✅ MyAnimeList OAuth integration with automatic syncing
-- ✅ X (Twitter) authentication
-- ✅ Spotify OAuth integration with automatic syncing
+Uses Supabase PostgreSQL with tables for:
+- **users**: User accounts and profiles
+- **media_items**: Books, movies, anime, music tracks
+- **user_libraries**: User ratings and library entries
+- **friend_connections**: Friend relationships
+- **taste_matches**: Pre-calculated match scores
+- **collections**: User-created collections
+- **activities**: Activity feed entries
+- **challenges**: Challenge data and progress
+- **notifications**: User notifications
+- **chat_messages**: Chat history
+- **watch_together_sessions**: Synchronized viewing sessions
 
-## Integrations
+## Authentication
 
-### Goodreads ✅
+Uses NextAuth.js with credentials provider and JWT session strategy. OAuth providers can be configured for Google and Twitter.
 
-Since Goodreads no longer supports API keys, the integration uses CSV import:
+## Development
 
-1. Users export their Goodreads library as CSV from https://www.goodreads.com/review/import
-2. Users upload the CSV file in Settings
-3. The system parses and imports all books, ratings, and reading dates
-4. Users can re-upload updated CSV files to sync new data
+```bash
+# Install dependencies
+npm install
 
-**Features:**
-- Imports book titles, authors, ISBNs
-- Preserves ratings (Goodreads 0-5 star scale converted to 1-10)
-- Stores reading dates (Date Read or Date Added)
-- Captures bookshelf tags
-- Optional Goodreads profile URL for linking
+# Set up environment variables
+# Required variables:
+# - NEXTAUTH_SECRET
+# - NEXTAUTH_URL
+# - SUPABASE_URL
+# - SUPABASE_ANON_KEY
+# - SUPABASE_SERVICE_ROLE_KEY
+# - OPENAI_API_KEY
+# - ANTHROPIC_API_KEY
+# - GOOGLE_CLIENT_ID (optional)
+# - GOOGLE_CLIENT_SECRET (optional)
 
-**Note**: This is a manual import process. Users need to export and upload their CSV whenever they want to update their reading data.
+# Set up database
+cat scripts/reset-and-setup.sql | psql
 
-### Letterboxd ✅
+# Run development server
+npm run dev
+```
 
-Similar to Goodreads, Letterboxd integration uses CSV import:
+Open [http://localhost:5001](http://localhost:5001) to view it in the browser.
 
-1. Users export their Letterboxd data as CSV from https://letterboxd.com/import/
-2. Users upload the CSV file in Settings
-3. The system parses and imports all films, ratings, and watch dates
-4. Users can re-upload updated CSV files to sync new data
+## Documentation
 
-**Features:**
-- Imports film titles, years, ratings (0.5-5 stars converted to 1-10 scale)
-- Stores watch dates (WatchedDate or DiaryDate)
-- Captures tags
-- Optional Letterboxd profile URL for linking
+- [Summary](./SUMMARY.md) - Project overview and features
+- [E2E Testing Guide](./E2E_TESTING_GUIDE.md) - Testing documentation
+- [Library Features](./LIBRARY_FEATURES.md) - Feature documentation
+- [Database Setup](./DATABASE_SETUP.md) - Database configuration
+- [AI Features](./AI_FEATURES.md) - AI integration details
+- [Deployment](./DEPLOYMENT.md) - Deployment guide
 
-**Note**: This is a manual import process. Users need to export and upload their CSV whenever they want to update their film data.
+## Roadmap
 
-### MyAnimeList ✅
+- [ ] Mobile app (React Native)
+- [ ] More integrations (Netflix, Steam, Apple Music)
+- [ ] Enhanced AI recommendations
+- [ ] Group matching features
+- [ ] Taste prediction model
+- [ ] Trending content discovery
 
-MyAnimeList uses OAuth 2.0 with PKCE for authentication:
+## Author
 
-1. Register your application at https://myanimelist.net/apiconfig
-2. Add credentials to `.env.local`:
-   ```
-   MYANIMELIST_CLIENT_ID=your_client_id
-   MYANIMELIST_CLIENT_SECRET=your_client_secret
-   ```
-3. Users can connect their MAL account in Settings
-4. Anime and manga lists are automatically synced after connection
-5. Manual sync is available via the "Sync" button
-
-**Features:**
-- Imports anime and manga with ratings (1-10 scale)
-- Stores watch/read dates
-- Captures list status (watching, completed, on hold, etc.)
-- Includes cover images and genres
-
-### Spotify ✅
-
-Spotify uses OAuth 2.0 Authorization Code Flow:
-
-1. Register your application at https://developer.spotify.com/dashboard
-2. Add redirect URI: `http://localhost:5000/api/integrations/spotify/callback` (or your production URL)
-3. Add credentials to `.env.local`:
-   ```
-   SPOTIFY_CLIENT_ID=your_client_id
-   SPOTIFY_CLIENT_SECRET=your_client_secret
-   ```
-4. Users can connect their Spotify account in Settings
-5. Saved tracks and top tracks are automatically synced after connection
-6. Manual sync is available via the "Sync" button
-
-**Features:**
-- Imports saved tracks (from library)
-- Imports top tracks (user's most played)
-- Stores album art/poster URLs
-- Captures artist names as genre tags
-- Automatic token refresh
-
-**Note**: Spotify API has rate limits. Sync operations respect these limits automatically.
-
-## Next Steps
-
-1. Enhance Goodreads CSV import (add cover image fetching, better genre extraction)
-2. Implement recommendation engine
-3. Add user discovery/search functionality
-4. Add groups feature (v2)
-5. Enhance UI with more animations and interactions
-
-For a detailed roadmap, see [PLAN.md](./PLAN.md)
+**Preyam** - [GitHub](https://github.com/preyam2002)
 
 ## License
 

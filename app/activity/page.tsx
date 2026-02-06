@@ -16,11 +16,21 @@ import Link from "next/link";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { ErrorMessage } from "@/components/error-message";
 
+interface ActivityContent {
+  media_id?: string;
+  media_title?: string;
+  rating?: number;
+  collection_id?: string;
+  collection_title?: string;
+  friend_username?: string;
+  achievement_name?: string;
+}
+
 interface ActivityItem {
   id: string;
   user_id: string;
   activity_type: "rating" | "review" | "collection" | "friend" | "achievement";
-  content: any;
+  content: ActivityContent;
   is_public: boolean;
   created_at: string;
   user: {

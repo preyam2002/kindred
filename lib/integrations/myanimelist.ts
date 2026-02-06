@@ -9,6 +9,56 @@ const MAL_AUTH_URL = "https://myanimelist.net/v1/oauth2";
 const MAL_CLIENT_ID = process.env.MYANIMELIST_CLIENT_ID || "";
 const MAL_CLIENT_SECRET = process.env.MYANIMELIST_CLIENT_SECRET || "";
 
+// Type definitions for MAL API responses
+interface MALPicture {
+  medium?: string;
+  large?: string;
+}
+
+interface MALGenre {
+  id: number;
+  name: string;
+}
+
+interface MALNode {
+  id: number;
+  title: string;
+  main_picture?: MALPicture;
+  genres?: MALGenre[];
+  num_episodes?: number;
+  num_chapters?: number;
+  media_type?: string;
+  status?: string;
+}
+
+interface MALListStatus {
+  score?: number;
+  status?: string;
+  updated_at?: string;
+}
+
+interface MALListItem {
+  node: MALNode;
+  list_status?: MALListStatus;
+}
+
+interface MALListResponse {
+  data?: MALListItem[];
+  paging?: {
+    next?: string;
+  };
+}
+
+interface MALAnimeItem {
+  anime: MALNode;
+  listStatus: MALListStatus | undefined;
+}
+
+interface MALMangaItem {
+  manga: MALNode;
+  listStatus: MALListStatus | undefined;
+}
+
 /**
  * Get user's anime list
  * Uses OAuth token if provided (for user-specific data like ratings), otherwise uses client_auth
@@ -20,7 +70,7 @@ export async function getMALAnimeList(
   offset: number = 0,
   status?: "watching" | "completed" | "on_hold" | "dropped" | "plan_to_watch",
   accessToken?: string
-): Promise<any> {
+): Promise<MALListResponse> {
   const cacheKey = `${CacheKeys.malUserAnimeList(username)}:${limit}:${offset}${status ? `:${status}` : ""}${accessToken ? ":oauth" : ""}`;
 
   return cachedFetch(
@@ -64,7 +114,7 @@ export async function getMALMangaList(
   offset: number = 0,
   status?: "reading" | "completed" | "on_hold" | "dropped" | "plan_to_read",
   accessToken?: string
-): Promise<any> {
+): Promise<MALListResponse> {
   const cacheKey = `${CacheKeys.malUserMangaList(username)}:${limit}:${offset}${status ? `:${status}` : ""}${accessToken ? ":oauth" : ""}`;
 
   return cachedFetch(
@@ -298,8 +348,8 @@ export async function syncMALData(
     let errors = 0;
 
     // Collect all anime and manga items first
-    const allAnimeItems: Array<{ anime: any; listStatus: any }> = [];
-    const allMangaItems: Array<{ manga: any; listStatus: any }> = [];
+    const allAnimeItems: MALAnimeItem[] = [];
+    const allMangaItems: MALMangaItem[] = [];
 
     // Fetch anime list
     try {
@@ -359,7 +409,7 @@ export async function syncMALData(
     const animeItems = allAnimeItems.map(item => ({
       id: item.anime.id.toString(),
       title: item.anime.title,
-      genre: item.anime.genres?.map((g: any) => g.name) || undefined,
+      genre: item.anime.genres?.map((g: MALGenre) => g.name) || undefined,
       poster_url: item.anime.main_picture?.medium || undefined,
       num_episodes: item.anime.num_episodes || undefined,
       listStatus: item.listStatus,
@@ -368,7 +418,7 @@ export async function syncMALData(
     const mangaItems = allMangaItems.map(item => ({
       id: item.manga.id.toString(),
       title: item.manga.title,
-      genre: item.manga.genres?.map((g: any) => g.name) || undefined,
+      genre: item.manga.genres?.map((g: MALGenre) => g.name) || undefined,
       poster_url: item.manga.main_picture?.medium || undefined,
       num_chapters: item.manga.num_chapters || undefined,
       listStatus: item.listStatus,

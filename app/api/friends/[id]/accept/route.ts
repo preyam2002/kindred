@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 // POST /api/friends/[id]/accept - Accept friend request
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -15,6 +15,8 @@ export async function POST(
     }
 
     const supabase = createClient();
+
+    const { id: friendshipId } = await params;
 
     // Get user ID
     const { data: user } = await supabase
@@ -31,7 +33,7 @@ export async function POST(
     const { data: friendship } = await supabase
       .from("friendships")
       .select("*")
-      .eq("id", params.id)
+      .eq("id", friendshipId)
       .eq("friend_id", user.id)
       .eq("status", "pending")
       .single();
@@ -43,14 +45,14 @@ export async function POST(
       );
     }
 
-    // Accept the request
-    const { error } = await supabase
+    // Accept request
+    const { error: acceptError } = await supabase
       .from("friendships")
       .update({ status: "accepted", updated_at: new Date().toISOString() })
-      .eq("id", params.id);
+      .eq("id", friendshipId);
 
-    if (error) {
-      console.error("Error accepting friend request:", error);
+    if (acceptError) {
+      console.error("Error accepting friend request:", acceptError);
       return NextResponse.json(
         { error: "Failed to accept friend request" },
         { status: 500 }
@@ -66,8 +68,8 @@ export async function POST(
       link: "/friends",
       is_read: false,
       actor_id: user.id,
-      actor_username: session.user.username,
-      actor_avatar: session.user.avatar,
+      actor_username: session.user.username || session.user.email,
+      actor_avatar: session.user.image,
     });
 
     return NextResponse.json({ success: true });

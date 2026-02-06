@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 // GET /api/queue/user/[username] - Get a friend's queue
 export async function GET(
   request: Request,
-  { params }: { params: { username: string } }
+  { params }: { params: Promise<{ username: string }> }
 ) {
   try {
     const session = await auth();
@@ -14,6 +14,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { username } = await params;
     const supabase = createClient();
 
     // Get current user ID
@@ -31,7 +32,7 @@ export async function GET(
     const { data: targetUser } = await supabase
       .from("users")
       .select("id, username, email, avatar")
-      .eq("username", params.username)
+      .eq("username", username)
       .single();
 
     if (!targetUser) {

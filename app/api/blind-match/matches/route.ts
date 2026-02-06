@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const session = await auth();
 
@@ -26,7 +26,18 @@ export async function GET(request: NextRequest) {
     }
 
     // Format matches
-    const formattedMatches = (matches || []).map((match: any) => {
+    const formattedMatches = (matches || []).map((match: {
+      id: string;
+      user1_email: string;
+      user2_email: string;
+      compatibility_score: number;
+      shared_genres?: string[];
+      chat_unlocked?: boolean;
+      user1_username?: string;
+      user2_username?: string;
+      matched_at: string | Date;
+      profile_revealed?: boolean;
+    }) => {
       const otherUserEmail =
         match.user1_email === session.user.email
           ? match.user2_email

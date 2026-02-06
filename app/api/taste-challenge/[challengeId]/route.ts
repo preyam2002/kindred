@@ -3,10 +3,10 @@ import { supabase } from "@/lib/db/supabase";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { challengeId: string } }
+  { params }: { params: Promise<{ challengeId: string }> }
 ) {
   try {
-    const { challengeId } = params;
+    const { challengeId } = await params;
 
     const { data: challenge, error } = await supabase
       .from("taste_challenges")

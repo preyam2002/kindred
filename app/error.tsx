@@ -45,7 +45,7 @@ export default function Error({
         >
           <h1 className="text-4xl font-bold mb-4">Something Went Wrong</h1>
           <p className="text-lg text-muted-foreground mb-4">
-            We encountered an unexpected error. Don't worry, our team has been notified
+            We encountered an unexpected error. Don&apos;t worry, our team has been notified
             and we're working on fixing it.
           </p>
 

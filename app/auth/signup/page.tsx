@@ -5,8 +5,9 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { BackButton } from "@/components/back-button";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
-export default function SignupPage() {
+function SignupForm() {
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") || "/settings";
 
@@ -64,3 +65,10 @@ export default function SignupPage() {
   );
 }
 
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center">Loading...</div>}>
+      <SignupForm />
+    </Suspense>
+  );
+}

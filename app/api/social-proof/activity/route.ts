@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
         media_id: activity.media_id,
         media_type: activity.media_type,
         media_title: mediaItem?.title || "Unknown",
-        media_cover: mediaItem?.cover_image || mediaItem?.poster_url,
+        media_cover: mediaItem?.poster_url,
         rating: activity.rating,
         timestamp: activity.updated_at,
       };

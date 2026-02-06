@@ -221,9 +221,9 @@ function CollectionCard({
             </div>
           )}
           {collection.is_public ? (
-            <Globe className="w-4 h-4" title="Public" />
+            <Globe className="w-4 h-4" />
           ) : (
-            <Lock className="w-4 h-4" title="Private" />
+            <Lock className="w-4 h-4" />
           )}
         </div>
       </motion.div>

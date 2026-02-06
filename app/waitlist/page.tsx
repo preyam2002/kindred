@@ -115,7 +115,7 @@ export default function WaitlistPage() {
               <div className="w-20 h-20 bg-primary/10 border-2 border-primary/20 flex items-center justify-center mx-auto mb-6">
                 <Check className="w-10 h-10 text-primary" />
               </div>
-              <h1 className="font-display text-5xl font-bold mb-3 letterpress">You're on the list!</h1>
+              <h1 className="font-display text-5xl font-bold mb-3 letterpress">You&apos;re on the list!</h1>
               <p className="text-muted-foreground text-lg">
                 Thanks for joining the Kindred waitlist
               </p>
@@ -258,19 +258,19 @@ export default function WaitlistPage() {
                 <li className="flex items-start gap-3">
                   <Zap className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
                   <span>
-                    We'll send invites every Friday to the top 50 people
+                    We&apos;ll send invites every Friday to the top 50 people
                   </span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Crown className="w-5 h-5 text-secondary mt-0.5 flex-shrink-0" />
                   <span>
-                    The more friends you invite, the faster you'll get access
+                    The more friends you invite, the faster you&apos;ll get access
                   </span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Sparkles className="w-5 h-5 text-accent mt-0.5 flex-shrink-0" />
                   <span>
-                    We'll email you when you're selected for early access
+                    We&apos;ll email you when you&apos;re selected for early access
                   </span>
                 </li>
               </ul>
@@ -332,7 +332,7 @@ export default function WaitlistPage() {
             {referralCode && (
               <div className="mb-6 p-4 bg-primary/10 border-2 border-primary/20">
                 <p className="font-mono text-sm text-primary font-medium">
-                  🎁 You've been invited! Using code: <span className="font-bold">{referralCode}</span>
+                  🎁 You&apos;ve been invited! Using code: <span className="font-bold">{referralCode}</span>
                 </p>
               </div>
             )}
@@ -374,7 +374,7 @@ export default function WaitlistPage() {
               </button>
 
               <p className="font-mono text-xs text-muted-foreground text-center leading-relaxed">
-                By joining, you'll get early access and can skip the line by
+                By joining, you&apos;ll get early access and can skip the line by
                 inviting friends.
               </p>
             </div>

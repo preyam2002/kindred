@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -45,7 +45,7 @@ type SortOption =
   | "title-asc"
   | "title-desc";
 
-export default function LibraryPage() {
+function LibraryContent() {
   const { data: session, status } = useSession();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -1023,5 +1023,13 @@ function MediaCardCompact({
         <Edit2 className="w-2 h-2 sm:w-3 sm:h-3" />
       </button>
     </motion.div>
+  );
+}
+
+export default function LibraryPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center">Loading library...</div>}>
+      <LibraryContent />
+    </Suspense>
   );
 }

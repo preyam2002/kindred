@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const session = await auth();
 
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       .eq("user_email", session.user.email);
 
     const swipedEmails = new Set(
-      (swipedUsers || []).map((s: any) => s.target_user_email)
+      (swipedUsers || []).map((s: { target_user_email: string }) => s.target_user_email)
     );
 
     // Get current user's taste profile

@@ -49,10 +49,10 @@ export async function POST(request: NextRequest) {
         .in("user_email", [session.user.email, target_user_id]);
 
       const myProfile = tasteProfiles?.find(
-        (p: any) => p.user_email === session.user.email
+        (p: { user_email: string; top_genres?: string[] }) => p.user_email === session.user.email
       );
       const theirProfile = tasteProfiles?.find(
-        (p: any) => p.user_email === target_user_id
+        (p: { user_email: string; top_genres?: string[] }) => p.user_email === target_user_id
       );
 
       const myGenres = myProfile?.top_genres || [];

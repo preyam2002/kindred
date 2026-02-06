@@ -348,7 +348,7 @@ export default function YearWrappedPage() {
               </motion.div>
               <p className="text-3xl font-semibold mb-6">items</p>
               <p className="text-xl opacity-90">
-                That's {Math.round((wrappedData.stats.items_loved / wrappedData.stats.total_items) * 100)}% of everything you watched!
+                That&apos;s {Math.round((wrappedData.stats.items_loved / wrappedData.stats.total_items) * 100)}% of everything you watched!
               </p>
             </div>
           </Card>

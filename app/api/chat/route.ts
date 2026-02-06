@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 import { fetchMediaItemsForUserMedia } from "@/lib/db/media-helpers";
+import type { UserMedia } from "@/types/database";
 import OpenAI from "openai";
 
 const openai = new OpenAI({
@@ -10,8 +11,14 @@ const openai = new OpenAI({
 
 const CHAT_MIGRATION_FILE = "lib/db/migrations/add_conversations_and_messages.sql";
 
-function isMissingChatTables(error: any): boolean {
-  return Boolean(error?.code === "PGRST205");
+interface SupabaseError {
+  code?: string;
+  message?: string;
+  status?: number;
+}
+
+function isMissingChatTables(error: unknown): boolean {
+  return Boolean((error as SupabaseError)?.code === "PGRST205");
 }
 
 function missingChatTablesResponse(context: string) {
@@ -149,7 +156,7 @@ export async function POST(request: NextRequest) {
 
     // Fetch the actual media items using the helper function
     const mediaMap = userMediaRecords
-      ? await fetchMediaItemsForUserMedia(userMediaRecords as any)
+      ? await fetchMediaItemsForUserMedia(userMediaRecords as unknown as UserMedia[])
       : new Map();
 
     // Combine user_media records with their media items
@@ -219,7 +226,7 @@ When making recommendations, consider their actual ratings and preferences. When
     // Convert message history to OpenAI format
     const openaiMessages = [
       { role: "system" as const, content: systemPrompt },
-      ...messageHistory.map((msg: any) => ({
+      ...messageHistory.map((msg: { role: string; content: string }) => ({
         role: msg.role as "user" | "assistant",
         content: msg.content,
       })),
@@ -232,10 +239,10 @@ When making recommendations, consider their actual ratings and preferences. When
         messages: openaiMessages,
         max_tokens: 2048,
       });
-    } catch (apiError: any) {
+    } catch (apiError: unknown) {
       console.error("Error calling OpenAI API:", apiError);
-      const errorMessage = apiError?.message || "Unknown error";
-      const isAuthError = errorMessage.includes("api key") || errorMessage.includes("authentication") || apiError?.status === 401;
+      const errorMessage = (apiError as Error)?.message || "Unknown error";
+      const isAuthError = errorMessage.includes("api key") || errorMessage.includes("authentication") || (apiError as { status?: number })?.status === 401;
       
       return NextResponse.json(
         { 

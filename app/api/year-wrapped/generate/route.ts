@@ -176,7 +176,7 @@ export async function GET(request: NextRequest) {
         items_loved,
       },
       top_genre,
-      top_items,
+      top_items: topItems,
       taste_personality: {
         mainstream_score,
         diversity_score,

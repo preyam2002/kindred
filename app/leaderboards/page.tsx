@@ -302,7 +302,7 @@ export default function LeaderboardsPage() {
                     <div
                       key={entry.user_id}
                       className={`p-4 flex items-center gap-4 hover:bg-accent/50 transition-colors ${
-                        entry.user_id === session.user?.id
+                        entry.user_id === session?.user?.id
                           ? "bg-primary/10"
                           : ""
                       }`}

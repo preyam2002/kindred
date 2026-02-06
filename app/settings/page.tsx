@@ -25,6 +25,7 @@ import {
   Trophy,
   Calendar,
   MessageCircle,
+  Heart,
 } from "lucide-react";
 import type { Source } from "@/types/database";
 

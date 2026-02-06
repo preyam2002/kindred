@@ -4,11 +4,11 @@ import { supabase } from "@/lib/db/supabase";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { username: string } }
+  { params }: { params: Promise<{ username: string }> }
 ) {
   try {
     const session = await auth();
-    const { username } = params;
+    const { username } = await params;
 
     // Get user by username
     const { data: user, error: userError } = await supabase

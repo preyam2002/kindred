@@ -94,7 +94,7 @@ export async function POST(request: Request) {
       is_read: false,
       actor_id: user.id,
       actor_username: session.user.username,
-      actor_avatar: session.user.avatar,
+      actor_avatar: session.user.image,
     });
 
     return NextResponse.json({ friendship }, { status: 201 });
