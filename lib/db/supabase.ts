@@ -1,19 +1,41 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+let supabaseClient: SupabaseClient | null = null;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn("Supabase environment variables are not set");
+function getSupabaseClient(): SupabaseClient {
+  if (supabaseClient) {
+    return supabaseClient;
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Supabase environment variables are not set");
+  }
+
+  supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      fetch: typeof fetch !== 'undefined' ? fetch : undefined,
+    },
+  });
+
+  return supabaseClient;
 }
 
-// Configure Supabase client with explicit fetch for server-side usage
-// This ensures fetch works properly in Next.js API routes and server components
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  global: {
-    // Use global fetch (available in Next.js 13+)
-    // Explicitly pass fetch to ensure it works in server-side contexts
-    fetch: typeof fetch !== 'undefined' ? fetch : undefined,
+// Export a singleton getter function
+export { getSupabaseClient };
+
+// Maintain backward compatibility with lazy initialization
+export const supabase = new Proxy({} as SupabaseClient, {
+  get(_target, prop) {
+    const client = getSupabaseClient();
+    const value = client[prop as keyof SupabaseClient];
+    // Bind methods to preserve 'this' context
+    if (typeof value === 'function') {
+      return value.bind(client);
+    }
+    return value;
   },
 });
 

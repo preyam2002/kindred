@@ -4,6 +4,9 @@ import { supabase } from "@/lib/db/supabase";
 import { fetchMediaItemsForUserMedia } from "@/lib/db/media-helpers";
 import type { UserMedia } from "@/types/database";
 
+// Force dynamic rendering - don't statically generate this route
+export const dynamic = 'force-dynamic';
+
 interface Match {
   user1_id: string;
   user2_id: string;

@@ -28,18 +28,6 @@ function LoginForm() {
           </p>
 
           <div className="space-y-4">
-
-            <button
-              onClick={() =>
-                signIn("google", {
-                  redirect: true,
-                  callbackUrl: redirect,
-                })
-              }
-              className="w-full px-4 py-2 border border-border rounded-md hover:bg-accent transition-colors"
-            >
-              Continue with Google
-            </button>
             <button
               onClick={() =>
                 signIn("twitter", {

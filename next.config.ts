@@ -15,6 +15,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Skip static generation for API routes that require Supabase
+  // This prevents build errors when environment variables are not available
+  output: 'standalone',
 };
 
 export default nextConfig;

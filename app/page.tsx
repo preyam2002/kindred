@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight } from "lucide-react";
+
 import { useSession } from "next-auth/react";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -78,13 +78,6 @@ export default function Home() {
 
             <div className="flex flex-col sm:flex-row gap-6 justify-center items-center animate-fadeInUp animate-delay-400">
               <Link
-                href="/demo"
-                className="group stamp bg-primary text-primary-foreground text-base hover:bg-primary/90 transition-all hover:-translate-y-1 hover:shadow-lg"
-              >
-                Try Demo
-                <ArrowRight className="inline-block w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <Link
                 href="/waitlist"
                 className="stamp border-2 border-secondary text-secondary hover:bg-secondary/10 transition-all hover:-translate-y-1"
               >
@@ -112,21 +105,18 @@ export default function Home() {
           {/* Value Props */}
           <div className="mt-24 grid md:grid-cols-3 gap-8 max-w-4xl mx-auto animate-fadeInUp animate-delay-800">
             <div className="text-center space-y-3">
-              <div className="font-display text-4xl text-primary">∞</div>
               <h3 className="font-display text-xl font-semibold">Endless Discovery</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 Find kindred spirits across your favorite media
               </p>
             </div>
             <div className="text-center space-y-3">
-              <div className="font-display text-4xl text-secondary">⚡</div>
               <h3 className="font-display text-xl font-semibold">AI-Powered Matches</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 Smart compatibility scoring based on taste overlap
               </p>
             </div>
             <div className="text-center space-y-3">
-              <div className="font-display text-4xl text-accent">✦</div>
               <h3 className="font-display text-xl font-semibold">Import Everything</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 Sync your libraries from all your favorite platforms

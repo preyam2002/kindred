@@ -1,5 +1,4 @@
 import NextAuth from "next-auth";
-import Google from "next-auth/providers/google";
 import Twitter from "next-auth/providers/twitter";
 import type { Account, User as NextAuthUser, Session } from "next-auth";
 import type { JWT } from "next-auth/jwt";
@@ -20,77 +19,22 @@ export const authOptions: NextAuthConfig = {
   secret: process.env.NEXTAUTH_SECRET,
   trustHost: true, // Required for production deployments - uses request headers for redirect URIs
   providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-      // NextAuth automatically constructs redirect URI from request origin
-      // when trustHost is true, ensuring it uses the frontend host
-    }),
     Twitter({
       clientId: process.env.TWITTER_CLIENT_ID || "",
       clientSecret: process.env.TWITTER_CLIENT_SECRET || "",
-      // NextAuth automatically constructs redirect URI from request origin
-      // when trustHost is true, ensuring it uses the frontend host
+      // Use OAuth 2.0 (required for X/Twitter)
+      authorization: {
+        url: "https://x.com/i/oauth2/authorize",
+        params: {
+          scope: "users.read tweet.read offline.access",
+        },
+      },
     }),
   ],
   callbacks: {
     async signIn({ user, account }: { user: ExtendedUser; account?: Account | null }) {
-      // Handle Google OAuth (always has email)
-      if (account?.provider === "google" && user.email) {
-        // Check if user exists
-        const { data: existingUser } = await supabase
-          .from("users")
-          .select("*")
-          .eq("email", user.email)
-          .single();
-
-        if (!existingUser) {
-          // Create new user
-          const username = user.email.split("@")[0];
-
-          const insertData: {
-            email: string;
-            username: string;
-            avatar?: string;
-          } = {
-            email: user.email,
-            username,
-          };
-
-          // Only add avatar if we have an image
-          if (user.image) {
-            insertData.avatar = user.image;
-          }
-
-          const { error } = await supabase.from("users").insert(insertData);
-
-          if (error) {
-            console.error("Error creating user:", error);
-            return false;
-          }
-        } else {
-          // Update existing user (avatar might have changed)
-          const updateData: { avatar?: string } = {};
-          if (user.image && user.image !== existingUser.avatar) {
-            updateData.avatar = user.image;
-          }
-
-          // Only update if there's something to update
-          if (Object.keys(updateData).length > 0) {
-            const { error: updateError } = await supabase
-              .from("users")
-              .update(updateData)
-              .eq("id", existingUser.id);
-
-            if (updateError) {
-              console.error("Error updating user:", updateError);
-              // Don't fail sign-in if update fails
-            }
-          }
-        }
-      }
       // Handle Twitter/X OAuth (may not have email)
-      else if (account?.provider === "twitter") {
+      if (account?.provider === "twitter") {
         try {
           // Validate Supabase configuration
           const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
