@@ -1,9 +1,47 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 import { fetchUserMediaWithItems } from "@/lib/db/media-helpers";
+import type { User } from "@/types/database";
 
-export async function GET(request: NextRequest) {
+interface UserMediaItem {
+  media_type: string;
+  media_id: string;
+  rating?: number | null;
+  media_items?: {
+    title?: string;
+    genre?: string[];
+  } | null;
+}
+
+interface CompatibilityResult {
+  overall_score: number;
+  genre_overlap_score: number;
+  rating_correlation: number;
+  shared_items_count: number;
+  anime_compatibility: number;
+  manga_compatibility: number;
+  book_compatibility: number;
+  movie_compatibility: number;
+  music_compatibility: number;
+}
+
+interface TasteHighlight {
+  shared_genres: string[];
+  similar_favorites: Array<{
+    title: string;
+    type: string;
+    both_rating: number;
+  }>;
+}
+
+interface Candidate {
+  user: User;
+  compatibility: CompatibilityResult;
+  taste_highlights: TasteHighlight;
+}
+
+export async function GET() {
   try {
     const session = await auth();
 
@@ -32,7 +70,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate compatibility with each user
-    const candidates = [];
+    const candidates: Candidate[] = [];
 
     for (const otherUser of otherUsers) {
       const otherUserMedia = await fetchUserMediaWithItems(otherUser.id);
@@ -52,7 +90,7 @@ export async function GET(request: NextRequest) {
       );
 
       candidates.push({
-        user: otherUser,
+        user: otherUser as User,
         compatibility,
         taste_highlights,
       });
@@ -74,19 +112,9 @@ export async function GET(request: NextRequest) {
 
 // Calculate compatibility between two users' media libraries
 function calculateCompatibility(
-  user1Media: any[],
-  user2Media: any[]
-): {
-  overall_score: number;
-  genre_overlap_score: number;
-  rating_correlation: number;
-  shared_items_count: number;
-  anime_compatibility: number;
-  manga_compatibility: number;
-  book_compatibility: number;
-  movie_compatibility: number;
-  music_compatibility: number;
-} {
+  user1Media: UserMediaItem[],
+  user2Media: UserMediaItem[]
+): CompatibilityResult {
   // Find shared items (same media_type and media_id)
   const user1Map = new Map(
     user1Media.map((item) => [`${item.media_type}:${item.media_id}`, item])
@@ -95,7 +123,7 @@ function calculateCompatibility(
     user2Media.map((item) => [`${item.media_type}:${item.media_id}`, item])
   );
 
-  const sharedItems: Array<{ user1: any; user2: any }> = [];
+  const sharedItems: Array<{ user1: UserMediaItem; user2: UserMediaItem }> = [];
   for (const [key, user1Item] of user1Map.entries()) {
     const user2Item = user2Map.get(key);
     if (user2Item) {
@@ -126,10 +154,10 @@ function calculateCompatibility(
   const user2Genres = new Set<string>();
 
   user1Media.forEach((item) => {
-    (item.media_items?.genre || []).forEach((g: string) => user1Genres.add(g));
+    (item.media_items?.genre || []).forEach((g) => user1Genres.add(g));
   });
   user2Media.forEach((item) => {
-    (item.media_items?.genre || []).forEach((g: string) => user2Genres.add(g));
+    (item.media_items?.genre || []).forEach((g) => user2Genres.add(g));
   });
 
   const sharedGenres = new Set(
@@ -194,25 +222,18 @@ function calculateCompatibility(
 
 // Get taste highlights (shared genres and similar favorites)
 function getTasteHighlights(
-  user1Media: any[],
-  user2Media: any[]
-): {
-  shared_genres: string[];
-  similar_favorites: Array<{
-    title: string;
-    type: string;
-    both_rating: number;
-  }>;
-} {
+  user1Media: UserMediaItem[],
+  user2Media: UserMediaItem[]
+): TasteHighlight {
   // Get shared genres
   const user1Genres = new Set<string>();
   const user2Genres = new Set<string>();
 
   user1Media.forEach((item) => {
-    (item.media_items?.genre || []).forEach((g: string) => user1Genres.add(g));
+    (item.media_items?.genre || []).forEach((g) => user1Genres.add(g));
   });
   user2Media.forEach((item) => {
-    (item.media_items?.genre || []).forEach((g: string) => user2Genres.add(g));
+    (item.media_items?.genre || []).forEach((g) => user2Genres.add(g));
   });
 
   const shared_genres = [...user1Genres].filter((g) => user2Genres.has(g));

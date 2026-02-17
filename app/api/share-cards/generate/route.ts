@@ -2,6 +2,40 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 import { fetchMediaItemsForUserMedia } from "@/lib/db/media-helpers";
+import type { UserMedia } from "@/types/database";
+
+interface UserMediaRecord {
+  media_type: string;
+  media_id: string;
+  rating: number | null;
+}
+
+interface MediaItem {
+  title: string;
+  cover_image?: string;
+  poster_url?: string;
+}
+
+interface EnrichedUserMedia extends UserMedia {
+  media_item?: MediaItem;
+}
+
+interface Match {
+  similarity_score: number;
+  user1_id: string;
+  user2_id: string;
+}
+
+interface CardData {
+  username: string;
+  cardType: string;
+  items?: MediaItem[];
+  title?: string;
+  profile?: Record<string, unknown>;
+  stats?: Record<string, unknown>;
+  compatibility?: Record<string, unknown>;
+  streak?: Record<string, unknown>;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -39,13 +73,19 @@ export async function GET(request: NextRequest) {
       .limit(50);
 
     const mediaMap = userMediaRecords
-      ? await fetchMediaItemsForUserMedia(userMediaRecords as any)
+      ? await fetchMediaItemsForUserMedia(userMediaRecords as UserMedia[])
       : new Map();
 
-    const userMedia = userMediaRecords
-      ? userMediaRecords.map((um) => ({
-          media_type: um.media_type,
-          rating: um.rating,
+    const userMedia: EnrichedUserMedia[] = userMediaRecords
+      ? userMediaRecords.map((um: UserMediaRecord & { id?: string; user_id?: string }) => ({
+          id: um.id || "",
+          user_id: um.user_id || userId,
+          media_type: (um.media_type || "movie") as "book" | "anime" | "manga" | "movie" | "music",
+          media_id: um.media_id,
+          rating: um.rating ?? undefined,
+          timestamp: new Date(),
+          created_at: new Date(),
+          updated_at: new Date(),
           media_item: mediaMap.get(um.media_id),
         }))
       : [];
@@ -63,7 +103,7 @@ export async function GET(request: NextRequest) {
       .select("similarity_score, user1_id, user2_id")
       .or(`user1_id.eq.${userId},user2_id.eq.${userId}`);
 
-    let cardData: any = {
+    const cardData: CardData = {
       username: userData?.username || "User",
       cardType,
     };
@@ -72,7 +112,7 @@ export async function GET(request: NextRequest) {
       case "top10":
         // Top 10 rated items
         const top10 = userMedia
-          .filter((item) => item.media_item && item.rating && item.rating >= 8)
+          .filter((item): item is EnrichedUserMedia & { media_item: MediaItem } => item.media_item !== undefined && item.rating !== undefined && item.rating >= 8)
           .slice(0, 10)
           .map((item) => ({
             title: item.media_item.title,

@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { syncSpotifyData, refreshSpotifyToken } from "@/lib/integrations/spotify";
 import { supabase } from "@/lib/db/supabase";
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     const session = await auth();
 

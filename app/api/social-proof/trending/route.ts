@@ -1,9 +1,30 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 import { fetchMediaItemsForUserMedia } from "@/lib/db/media-helpers";
+import type { UserMedia } from "@/types/database";
 
-export async function GET(request: NextRequest) {
+interface NetworkRating {
+  media_id: string;
+  media_type: string;
+  rating: number;
+  updated_at: string;
+}
+
+interface MediaCountEntry {
+  count: number;
+  totalRating: number;
+  media_type: string;
+}
+
+interface TrendingMediaId {
+  media_id: string;
+  media_type: string;
+  friend_count: number;
+  avg_rating: number;
+}
+
+export async function GET() {
   try {
     const session = await auth();
 
@@ -25,7 +46,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Extract friend user IDs
-    const friendIds = matches.map((match: any) =>
+    const friendIds = matches.map((match) =>
       match.user1_id === userId ? match.user2_id : match.user1_id
     );
 
@@ -47,10 +68,10 @@ export async function GET(request: NextRequest) {
     // Count how many friends rated each item
     const mediaCount = new Map<
       string,
-      { count: number; totalRating: number; media_type: string }
+      MediaCountEntry
     >();
 
-    networkRatings.forEach((rating: any) => {
+    networkRatings.forEach((rating: NetworkRating) => {
       const key = rating.media_id;
       const existing = mediaCount.get(key);
 
@@ -67,7 +88,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Sort by count (most popular) and take top 20
-    const trendingMediaIds = Array.from(mediaCount.entries())
+    const trendingMediaIds: TrendingMediaId[] = Array.from(mediaCount.entries())
       .filter(([_, data]) => data.count >= 2) // At least 2 friends rated it
       .sort((a, b) => b[1].count - a[1].count)
       .slice(0, 20)
@@ -84,7 +105,7 @@ export async function GET(request: NextRequest) {
         media_id: item.media_id,
         media_type: item.media_type,
         rating: item.avg_rating,
-      })) as any
+      })) as unknown as UserMedia[]
     );
 
     // Build trending items

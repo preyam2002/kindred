@@ -117,8 +117,8 @@ export async function POST(request: NextRequest) {
     const { getMALAnimeList } = await import("@/lib/integrations/myanimelist");
     try {
       await getMALAnimeList(username, 1, 0);
-    } catch (error: any) {
-      if (error.message?.includes("404") || error.message?.includes("Not Found")) {
+    } catch (error) {
+      if (error instanceof Error && error.message?.includes("404") || error instanceof Error && error.message?.includes("Not Found")) {
         return NextResponse.json(
           { error: "MyAnimeList username not found or profile is private" },
           { status: 404 }

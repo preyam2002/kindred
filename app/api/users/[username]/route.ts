@@ -2,6 +2,71 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 
+interface User {
+  id: string;
+  username: string;
+  email: string;
+  created_at: string;
+}
+
+interface UserMediaItem {
+  media_id: string;
+  media_type: string;
+  rating: number | null;
+  created_at: string;
+}
+
+interface Anime {
+  id: string;
+  title: string;
+  poster_url: string;
+}
+
+interface Manga {
+  id: string;
+  title: string;
+  poster_url: string;
+}
+
+interface Book {
+  id: string;
+  title: string;
+  poster_url: string;
+  author: string;
+}
+
+interface Movie {
+  id: string;
+  title: string;
+  poster_url: string;
+}
+
+interface Music {
+  id: string;
+  title: string;
+  poster_url: string;
+  artist: string;
+}
+
+interface TopRatedItem {
+  media_id: string;
+  media_type: string;
+  rating: number | null;
+  anime?: { id: string; title: string; poster_url: string }[];
+  manga?: { id: string; title: string; poster_url: string }[];
+  book?: { id: string; title: string; poster_url: string; author: string }[];
+  movie?: { id: string; title: string; poster_url: string }[];
+  music?: { id: string; title: string; poster_url: string; artist: string }[];
+}
+
+interface TopItem {
+  id: string;
+  type: string;
+  title: string | undefined;
+  poster_url: string | undefined;
+  rating: number | null;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ username: string }> }
@@ -76,8 +141,9 @@ export async function GET(
       .order("rating", { ascending: false })
       .limit(12);
 
-    const topItems = topRated?.map((item: any) => {
-      const media = item.anime || item.manga || item.book || item.movie || item.music;
+    const topItems = topRated?.map((item: TopRatedItem) => {
+      const mediaArray = item.anime || item.manga || item.book || item.movie || item.music;
+      const media = mediaArray?.[0];
       return {
         id: item.media_id,
         type: item.media_type,
@@ -85,7 +151,7 @@ export async function GET(
         poster_url: media?.poster_url,
         rating: item.rating,
       };
-    }).filter(item => item.title);
+    }).filter((item: TopItem) => item.title);
 
     // Calculate compatibility if viewing another user
     let compatibility = null;

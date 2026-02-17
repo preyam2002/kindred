@@ -2,6 +2,40 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 
+interface LeaderboardEntry {
+  rank: number;
+  user_id: string;
+  username: string;
+  score: number;
+  label: string;
+  extra?: string;
+}
+
+interface UserMediaItem {
+  user_id: string;
+}
+
+interface TasteProfile {
+  user_email: string;
+  diversity_score?: number;
+  top_genres?: string[];
+  rating_average?: number;
+}
+
+interface UserStreak {
+  user_email: string;
+  current_streak?: number;
+  longest_streak?: number;
+  level?: number;
+  total_points?: number;
+}
+
+interface UserRecord {
+  id: string;
+  username: string;
+  email?: string;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -14,7 +48,7 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get("category") || "top_raters";
     const period = searchParams.get("period") || "all_time"; // all_time, monthly, weekly
 
-    let leaderboard: any[] = [];
+    let leaderboard: LeaderboardEntry[] = [];
 
     // Calculate date range for period
     const now = new Date();
@@ -35,7 +69,7 @@ export async function GET(request: NextRequest) {
 
         if (topRaters) {
           const userCounts = new Map<string, number>();
-          topRaters.forEach((item: any) => {
+          topRaters.forEach((item: UserMediaItem) => {
             userCounts.set(item.user_id, (userCounts.get(item.user_id) || 0) + 1);
           });
 
@@ -49,7 +83,7 @@ export async function GET(request: NextRequest) {
             .select("id, username")
             .in("id", userIds);
 
-          const userMap = new Map(users?.map((u: any) => [u.id, u.username]) || []);
+          const userMap = new Map(users?.map((u: UserRecord) => [u.id, u.username]) || []);
 
           leaderboard = sortedUsers.map(([userId, count], index) => ({
             rank: index + 1,
@@ -75,13 +109,13 @@ export async function GET(request: NextRequest) {
             .select("id, username, email")
             .in(
               "email",
-              profiles.map((p: any) => p.user_email)
+              profiles.map((p: TasteProfile) => p.user_email)
             );
 
-          const userMap = new Map(users?.map((u: any) => [u.email, u]) || []);
+          const userMap = new Map(users?.map((u: UserRecord) => [u.email, u]) || []);
 
           leaderboard = profiles
-            .map((profile: any, index: number) => {
+            .map((profile: TasteProfile, index: number) => {
               const user = userMap.get(profile.user_email);
               if (!user) return null;
 
@@ -94,7 +128,7 @@ export async function GET(request: NextRequest) {
                 extra: `${(profile.top_genres || []).length} genres`,
               };
             })
-            .filter(Boolean);
+            .filter(Boolean) as LeaderboardEntry[];
         }
         break;
 
@@ -112,13 +146,13 @@ export async function GET(request: NextRequest) {
             .select("id, username, email")
             .in(
               "email",
-              streaks.map((s: any) => s.user_email)
+              streaks.map((s: UserStreak) => s.user_email)
             );
 
-          const userMap = new Map(users?.map((u: any) => [u.email, u]) || []);
+          const userMap = new Map(users?.map((u: UserRecord) => [u.email, u]) || []);
 
           leaderboard = streaks
-            .map((streak: any, index: number) => {
+            .map((streak: UserStreak, index: number) => {
               const user = userMap.get(streak.user_email);
               if (!user) return null;
 
@@ -131,7 +165,7 @@ export async function GET(request: NextRequest) {
                 extra: `Level ${streak.level || 1}`,
               };
             })
-            .filter(Boolean);
+            .filter(Boolean) as LeaderboardEntry[];
         }
         break;
 
@@ -152,13 +186,13 @@ export async function GET(request: NextRequest) {
             .select("id, username, email")
             .in(
               "email",
-              genreExperts.map((p: any) => p.user_email)
+              genreExperts.map((p: TasteProfile) => p.user_email)
             );
 
-          const userMap = new Map(users?.map((u: any) => [u.email, u]) || []);
+          const userMap = new Map(users?.map((u: UserRecord) => [u.email, u]) || []);
 
           leaderboard = genreExperts
-            .map((profile: any, index: number) => {
+            .map((profile: TasteProfile, index: number) => {
               const user = userMap.get(profile.user_email);
               if (!user) return null;
 
@@ -171,7 +205,7 @@ export async function GET(request: NextRequest) {
                 extra: `${genre} expert`,
               };
             })
-            .filter(Boolean);
+            .filter(Boolean) as LeaderboardEntry[];
         }
         break;
 
@@ -189,13 +223,13 @@ export async function GET(request: NextRequest) {
             .select("id, username, email")
             .in(
               "email",
-              points.map((p: any) => p.user_email)
+              points.map((p: UserStreak) => p.user_email)
             );
 
-          const userMap = new Map(users?.map((u: any) => [u.email, u]) || []);
+          const userMap = new Map(users?.map((u: UserRecord) => [u.email, u]) || []);
 
           leaderboard = points
-            .map((item: any, index: number) => {
+            .map((item: UserStreak, index: number) => {
               const user = userMap.get(item.user_email);
               if (!user) return null;
 
@@ -208,7 +242,7 @@ export async function GET(request: NextRequest) {
                 extra: `Level ${item.level || 1}`,
               };
             })
-            .filter(Boolean);
+            .filter(Boolean) as LeaderboardEntry[];
         }
         break;
 

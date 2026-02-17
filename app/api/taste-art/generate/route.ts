@@ -25,6 +25,21 @@ function getGenreColor(genre: string): string {
   return GENRE_COLORS[genre] || `#${Math.floor(Math.random() * 16777215).toString(16)}`;
 }
 
+interface LibraryItem {
+  rating: number | null;
+  anime?: { genre: string[] }[];
+  manga?: { genre: string[] }[];
+  book?: { genre: string[] }[];
+  movie?: { genre: string[] }[];
+  music?: { genre: string[] }[];
+}
+
+interface GenreCount {
+  name: string;
+  count: number;
+  color: string;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -66,15 +81,18 @@ export async function GET(request: NextRequest) {
     let totalRating = 0;
     let ratedCount = 0;
 
-    libraryItems.forEach((item: any) => {
-      const media = item.anime || item.manga || item.book || item.movie || item.music;
+    libraryItems.forEach((item: LibraryItem) => {
+      const mediaArray = item.anime || item.manga || item.book || item.movie || item.music;
+      if (!mediaArray || mediaArray.length === 0) return;
+      const media = mediaArray[0];
+
       if (media && media.genre && Array.isArray(media.genre)) {
         media.genre.forEach((g: string) => {
           genreCounts[g] = (genreCounts[g] || 0) + 1;
         });
       }
 
-      if (item.rating) {
+      if (item.rating !== null && item.rating !== undefined) {
         totalRating += item.rating;
         ratedCount++;
       }
@@ -88,7 +106,7 @@ export async function GET(request: NextRequest) {
         name,
         count,
         color: getGenreColor(name),
-      }));
+      })) as GenreCount[];
 
     if (topGenres.length === 0) {
       return NextResponse.json(

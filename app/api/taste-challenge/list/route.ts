@@ -2,6 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 
+interface Challenge {
+  id: string;
+  username: string;
+  items: unknown[];
+  created_at: string;
+  expires_at: string;
+}
+
+interface FormattedChallenge {
+  id: string;
+  username: string;
+  items: unknown[];
+  createdAt: string;
+  expiresAt: string;
+  isActive: boolean;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -27,14 +44,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Format challenges for response
-    const formattedChallenges = (challenges || []).map((challenge: any) => ({
+    const formattedChallenges = (challenges || []).map((challenge: Challenge) => ({
       id: challenge.id,
       username: challenge.username,
       items: challenge.items || [],
       createdAt: challenge.created_at,
       expiresAt: challenge.expires_at,
       isActive: new Date(challenge.expires_at) > new Date(),
-    }));
+    })) as FormattedChallenge[];
 
     return NextResponse.json({
       challenges: formattedChallenges,

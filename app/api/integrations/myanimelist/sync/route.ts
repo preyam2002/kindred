@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { syncMALData } from "@/lib/integrations/myanimelist";
 import { supabase } from "@/lib/db/supabase";
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     const session = await auth();
 
@@ -43,8 +43,8 @@ export async function POST(request: NextRequest) {
       mangaImported: result.mangaImported,
       errors: result.errors,
     });
-  } catch (error) {
-    console.error("Error syncing MAL:", error);
+  } catch {
+    console.error("Error syncing MAL:");
     return NextResponse.json(
       { error: "Failed to sync MyAnimeList data" },
       { status: 500 }

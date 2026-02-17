@@ -2,6 +2,25 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 
+interface MyLibraryItem {
+  media_id: string;
+  rating: number | null;
+}
+
+interface UserLibraryItem {
+  user_email: string;
+  media_id: string;
+  rating: number | null;
+}
+
+interface Influencer {
+  user_id: string;
+  username: string;
+  influence_percentage: number;
+  shared_items: number;
+  compatibility: number;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -20,9 +39,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ influencers: [] });
     }
 
-    const myMediaIds = new Set(myLibrary.map((item: any) => item.media_id));
+    const myMediaIds = new Set(myLibrary.map((item: MyLibraryItem) => item.media_id));
     const myRatings = new Map(
-      myLibrary.map((item: any) => [item.media_id, item.rating || 0])
+      myLibrary.map((item: MyLibraryItem) => [item.media_id, item.rating || 0])
     );
 
     // Get other users' libraries
@@ -36,19 +55,20 @@ export async function GET(request: NextRequest) {
     }
 
     // Group by user
-    const userLibraries = new Map<string, Array<{ media_id: string; rating: number }>>();
-    otherUsers.forEach((item: any) => {
+    const userLibraries = new Map<string, UserLibraryItem[]>();
+    otherUsers.forEach((item: UserLibraryItem) => {
       if (!userLibraries.has(item.user_email)) {
         userLibraries.set(item.user_email, []);
       }
       userLibraries.get(item.user_email)!.push({
+        user_email: item.user_email,
         media_id: item.media_id,
         rating: item.rating || 0,
       });
     });
 
     // Calculate influence scores
-    const influencers: any[] = [];
+    const influencers: Influencer[] = [];
 
     userLibraries.forEach((theirLibrary, userEmail) => {
       const theirMediaIds = new Set(theirLibrary.map((item) => item.media_id));

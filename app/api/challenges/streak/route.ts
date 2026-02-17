@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const session = await auth();
 
@@ -34,10 +34,10 @@ export async function GET(request: NextRequest) {
     today.setHours(0, 0, 0, 0);
 
     let currentStreak = 0;
-    let checkDate = new Date(today);
+    const checkDate = new Date(today);
     const activityDates = new Set<string>();
 
-    (activityData || []).forEach((item: any) => {
+    (activityData || []).forEach((item) => {
       const itemDate = new Date(item.updated_at || item.created_at);
       itemDate.setHours(0, 0, 0, 0);
       activityDates.add(itemDate.toISOString());
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
 
     const totalPoints =
       (completedChallenges || []).reduce(
-        (sum: number, c: any) => sum + (c.points_earned || 0),
+        (sum: number, c) => sum + (c.points_earned || 0),
         0
       ) || streakData?.total_points || 0;
 

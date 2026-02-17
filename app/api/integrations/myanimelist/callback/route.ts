@@ -85,9 +85,9 @@ export async function GET(request: NextRequest) {
     let tokens;
     try {
       tokens = await exchangeMALToken(code, codeVerifier, callbackUrl);
-    } catch (error: any) {
+    } catch (error) {
       console.error("[MAL][Callback] Error exchanging MAL token", {
-        error: error.message,
+        error: error instanceof Error ? error.message : "Unknown error",
         callbackUrl,
         hasCode: !!code,
       });
@@ -104,9 +104,9 @@ export async function GET(request: NextRequest) {
         malUserId: userProfile?.id,
         malUsername: userProfile?.name,
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error("[MAL][Callback] Error fetching user profile", {
-        error: error.message,
+        error: error instanceof Error ? error.message : "Unknown error",
       });
       // Continue anyway - we can still store tokens
     }
@@ -162,9 +162,9 @@ export async function GET(request: NextRequest) {
       console.log("[MAL][Callback] Starting initial sync");
       syncResult = await syncMALData(session.user.id);
       console.log("[MAL][Callback] Initial sync completed", syncResult);
-    } catch (syncError: any) {
+    } catch (syncError) {
       console.error("[MAL][Callback] Error during initial sync", {
-        error: syncError?.message,
+        error: syncError instanceof Error ? syncError.message : "Unknown error",
       });
       // Continue to redirect even if sync fails
     }
@@ -177,10 +177,10 @@ export async function GET(request: NextRequest) {
       redirectUrl.searchParams.set("manga_imported", syncResult.mangaImported.toString());
     }
     return NextResponse.redirect(redirectUrl);
-  } catch (error: any) {
+  } catch (error) {
     console.error("[MAL][Callback] Unexpected error", {
-      error: error.message,
-      stack: error.stack,
+      error: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
     });
     const frontendOrigin = getFrontendOrigin(request);
     const redirectUrl = new URL("/settings", frontendOrigin);

@@ -1,8 +1,20 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 
-export async function GET(request: NextRequest) {
+interface RouletteRecommendation {
+  id: string;
+  title: string;
+  genre?: string[];
+  poster_url?: string;
+  [key: string]: unknown;
+}
+
+interface TasteProfile {
+  top_genres?: string[];
+}
+
+export async function GET() {
   try {
     const session = await auth();
 
@@ -24,7 +36,7 @@ export async function GET(request: NextRequest) {
       .eq("user_email", session.user.email);
 
     const existingMediaIds = new Set(
-      existingLibrary?.map((item: any) => item.media_id) || []
+      existingLibrary?.map((item) => item.media_id) || []
     );
 
     const topGenres = tasteProfile?.top_genres || [];
@@ -33,7 +45,7 @@ export async function GET(request: NextRequest) {
     // Randomly select a media type
     const randomType = mediaTypes[Math.floor(Math.random() * mediaTypes.length)];
 
-    let recommendations: any[] = [];
+    let recommendations: RouletteRecommendation[] = [];
 
     // Get recommendations based on user's top genres
     if (topGenres.length > 0) {
@@ -48,7 +60,7 @@ export async function GET(request: NextRequest) {
       if (genreMatches && genreMatches.length > 0) {
         // Filter out items already in library
         const filtered = genreMatches.filter(
-          (item: any) => !existingMediaIds.has(item.id)
+          (item) => !existingMediaIds.has(item.id)
         );
 
         if (filtered.length > 0) {
@@ -66,14 +78,14 @@ export async function GET(request: NextRequest) {
 
       if (randomItems) {
         recommendations = randomItems.filter(
-          (item: any) => !existingMediaIds.has(item.id)
+          (item) => !existingMediaIds.has(item.id)
         );
       }
     }
 
     // Randomly select 5 recommendations
     const shuffled = recommendations.sort(() => 0.5 - Math.random());
-    const selected = shuffled.slice(0, 5).map((item: any) => ({
+    const selected = shuffled.slice(0, 5).map((item) => ({
       ...item,
       media_type: randomType,
     }));

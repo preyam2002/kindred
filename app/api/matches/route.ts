@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
+import { Match, User } from "@/types/database";
+
+interface MatchWithUser {
+  id: string;
+  similarity_score: number;
+  shared_count: number;
+  created_at: string | Date;
+  updated_at: string | Date;
+  otherUser: {
+    id: string;
+    username: string;
+    avatar?: string;
+    bio?: string;
+  };
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,7 +51,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch user data for all other users in matches
     const otherUserIds = new Set<string>();
-    (matches || []).forEach((match: any) => {
+    (matches || []).forEach((match: Match) => {
       if (match.user1_id === userId) {
         otherUserIds.add(match.user2_id);
       } else {
@@ -51,11 +66,11 @@ export async function GET(request: NextRequest) {
       .in("id", Array.from(otherUserIds));
 
     const usersMap = new Map(
-      (otherUsers || []).map((u) => [u.id, u])
+      (otherUsers || []).map((u) => [u.id, u as User])
     );
 
     // Enrich matches with user data
-    const enrichedMatches = (matches || []).map((match: any) => {
+    const enrichedMatches: MatchWithUser[] = (matches || []).map((match: Match) => {
       const otherUserId = match.user1_id === userId ? match.user2_id : match.user1_id;
       const otherUser = usersMap.get(otherUserId) || {
         id: otherUserId,

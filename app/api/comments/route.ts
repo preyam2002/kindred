@@ -32,16 +32,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user info for each comment
-    const userIds = [...new Set(comments.map((c: any) => c.user_id))];
+    const userIds = [...new Set(comments.map((c) => c.user_id))];
     const { data: users } = await supabase
       .from("users")
       .select("id, username")
       .in("id", userIds);
 
-    const userMap = new Map(users?.map((u: any) => [u.id, u.username]) || []);
+    const userMap = new Map(users?.map((u) => [u.id, u.username]) || []);
 
     // Enrich comments with usernames
-    const enrichedComments = comments.map((comment: any) => ({
+    const enrichedComments = comments.map((comment) => ({
       ...comment,
       username: userMap.get(comment.user_id) || "Unknown",
     }));

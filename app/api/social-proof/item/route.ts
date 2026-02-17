@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 
+interface Match {
+  user1_id: string;
+  user2_id: string;
+  similarity_score: number;
+}
+
+interface UserMediaRating {
+  user_id: string;
+  rating: number | null;
+}
+
+interface User {
+  id: string;
+  username: string;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -38,7 +54,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Extract friend user IDs
-    const friendIds = matches.map((match: any) =>
+    const friendIds = matches.map((match: Match) =>
       match.user1_id === userId ? match.user2_id : match.user1_id
     );
 
@@ -64,19 +80,19 @@ export async function GET(request: NextRequest) {
       .select("id, username")
       .in(
         "id",
-        friendRatings.map((r: any) => r.user_id)
+        friendRatings.map((r: UserMediaRating) => r.user_id)
       );
 
-    const userMap = new Map(users?.map((u: any) => [u.id, u.username]) || []);
+    const userMap = new Map(users?.map((u: User) => [u.id, u.username]) || []);
 
-    const friends = friendRatings.map((rating: any) => ({
+    const friends = friendRatings.map((rating: UserMediaRating) => ({
       user_id: rating.user_id,
       username: userMap.get(rating.user_id) || "Someone",
       rating: rating.rating,
     }));
 
     const avgRating =
-      friendRatings.reduce((sum: number, r: any) => sum + (r.rating || 0), 0) /
+      friendRatings.reduce((sum: number, r: UserMediaRating) => sum + (r.rating || 0), 0) /
       friendRatings.length;
 
     return NextResponse.json({

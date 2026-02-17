@@ -2,6 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 import { fetchMediaItemsForUserMedia } from "@/lib/db/media-helpers";
+import type { UserMedia } from "@/types/database";
+
+interface Match {
+  user1_id: string;
+  user2_id: string;
+}
+
+interface UserActivity {
+  user_id: string;
+  media_id: string;
+  media_type: string;
+  rating: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface User {
+  id: string;
+  username: string;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,7 +45,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Extract friend user IDs
-    const friendIds = matches.map((match: any) =>
+    const friendIds = matches.map((match: Match) =>
       match.user1_id === userId ? match.user2_id : match.user1_id
     );
 
@@ -51,13 +71,13 @@ export async function GET(request: NextRequest) {
       .select("id, username")
       .in("id", friendIds);
 
-    const userMap = new Map(users?.map((u: any) => [u.id, u.username]) || []);
+    const userMap = new Map(users?.map((u: User) => [u.id, u.username]) || []);
 
     // Fetch media items
-    const mediaMap = await fetchMediaItemsForUserMedia(friendActivity as any);
+    const mediaMap = await fetchMediaItemsForUserMedia(friendActivity as UserMedia[]);
 
     // Build activity feed
-    const activities = friendActivity.map((activity: any) => {
+    const activities = friendActivity.map((activity: UserActivity) => {
       const mediaItem = mediaMap.get(activity.media_id);
       const isNew =
         new Date(activity.created_at).getTime() ===

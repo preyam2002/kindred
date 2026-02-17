@@ -2,6 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 
+interface LibraryItem {
+  id: string;
+  media_id: string;
+  rating: number | null;
+  anime?: { id: string; title: string; type: string; poster_url: string }[];
+  manga?: { id: string; title: string; type: string; poster_url: string }[];
+  book?: { id: string; title: string; type: string; poster_url: string; author: string }[];
+  movie?: { id: string; title: string; type: string; poster_url: string }[];
+  music?: { id: string; title: string; type: string; poster_url: string; artist: string }[];
+}
+
+interface ChallengeItem {
+  id: string;
+  title: string;
+  type: string;
+  poster_url: string;
+  rating: number;
+  author?: string;
+  artist?: string;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -45,21 +66,22 @@ export async function GET(request: NextRequest) {
 
     // Format items for preview
     const items = libraryItems
-      .map((item: any) => {
-        const media = item.anime || item.manga || item.book || item.movie || item.music;
-        if (!media) return null;
+      .map((item: LibraryItem) => {
+        const mediaArray = item.anime || item.manga || item.book || item.movie || item.music;
+        if (!mediaArray || mediaArray.length === 0) return null;
+        const media = mediaArray[0];
 
         return {
           id: item.media_id,
           title: media.title,
           type: media.type,
           poster_url: media.poster_url,
-          rating: item.rating,
-          author: media.author,
-          artist: media.artist,
+          rating: item.rating ?? 0,
+          author: (media as { author?: string }).author,
+          artist: (media as { artist?: string }).artist,
         };
       })
-      .filter(Boolean)
+      .filter((item: ChallengeItem | null): item is ChallengeItem => item !== null)
       .slice(0, 15); // Top 15 items
 
     if (items.length === 0) {

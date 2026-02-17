@@ -97,12 +97,15 @@ export default function AnalyticsPage() {
     );
   }
 
-  const platformIcons: Record<string, any> = {
-    twitter: Twitter,
-    facebook: Facebook,
-    linkedin: Linkedin,
-    whatsapp: MessageCircle,
-    copy_link: Link2,
+  const getPlatformIcon = (platform: string) => {
+    const icons: Record<string, typeof Share2> = {
+      twitter: Twitter,
+      facebook: Facebook,
+      linkedin: Linkedin,
+      whatsapp: MessageCircle,
+      copy_link: Link2,
+    };
+    return icons[platform] || Share2;
   };
 
   return (
@@ -238,7 +241,7 @@ export default function AnalyticsPage() {
               {Object.entries(analytics.sharesByPlatform)
                 .sort(([, a], [, b]) => b - a)
                 .map(([platform, count]) => {
-                  const Icon = platformIcons[platform] || Share2;
+                  const Icon = getPlatformIcon(platform);
                   const percentage =
                     analytics.summary.totalShares > 0
                       ? ((count / analytics.summary.totalShares) * 100).toFixed(

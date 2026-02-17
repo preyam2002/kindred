@@ -71,13 +71,12 @@ export async function POST(
           imported: result.imported,
           errors: result.errors,
         });
-      } catch (error: any) {
+      } catch (error) {
         console.error("Goodreads sync failed:", error);
+        const errorMessage = error instanceof Error ? error.message : "Failed to sync Goodreads data. Please try again.";
         return NextResponse.json(
           {
-            error:
-              error?.message ||
-              "Failed to sync Goodreads data. Please try again.",
+            error: errorMessage,
           },
           { status: 500 }
         );
@@ -132,13 +131,12 @@ export async function POST(
           imported: result.imported,
           errors: result.errors,
         });
-      } catch (error: any) {
+      } catch (error) {
         console.error("Letterboxd sync failed:", error);
+        const errorMessage = error instanceof Error ? error.message : "Failed to sync Letterboxd data. Please try again.";
         return NextResponse.json(
           {
-            error:
-              error?.message ||
-              "Failed to sync Letterboxd data. Please try again.",
+            error: errorMessage,
           },
           { status: 500 }
         );
@@ -171,13 +169,12 @@ export async function POST(
           }`,
           ...result,
         });
-      } catch (error: any) {
+      } catch (error) {
         console.error("MyAnimeList sync failed:", error);
+        const errorMessage = error instanceof Error ? error.message : "Failed to sync MyAnimeList data. Please try again.";
         return NextResponse.json(
           {
-            error:
-              error?.message ||
-              "Failed to sync MyAnimeList data. Please try again.",
+            error: errorMessage,
           },
           { status: 500 }
         );

@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const session = await auth();
 
@@ -24,22 +24,22 @@ export async function GET(request: NextRequest) {
       .lt("created_at", tomorrow.toISOString());
 
     const progressMap = new Map(
-      (userProgress || []).map((p: any) => [p.challenge_id, p])
+      (userProgress || []).map((p) => [p.challenge_id, p])
     );
 
     // Get user's library stats for dynamic challenge progress
     const { data: libraryItems } = await supabase
       .from("library")
-      .select("rating, created_at, updated_at")
+      .select("media_type, rating, created_at, updated_at")
       .eq("user_email", session.user.email);
 
-    const todayRatings = (libraryItems || []).filter((item: any) => {
+    const todayRatings = (libraryItems || []).filter((item) => {
       const itemDate = new Date(item.updated_at || item.created_at);
       return itemDate >= today && itemDate < tomorrow;
     });
 
     const highRatingsToday = todayRatings.filter(
-      (item: any) => item.rating && item.rating >= 8
+      (item) => item.rating && item.rating >= 8
     ).length;
 
     // Define daily challenges
@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function calculateDiversity(items: any[]): number {
+function calculateDiversity(items: { media_type: string }[]): number {
   const types = new Set<string>();
 
   // This would need to check the actual media types from joined data

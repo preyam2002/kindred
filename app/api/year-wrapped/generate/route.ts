@@ -2,6 +2,38 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 
+interface LibraryItem {
+  id: string;
+  media_id: string;
+  rating: number | null;
+  created_at: string;
+  updated_at: string;
+  anime?: MediaItem[];
+  manga?: MediaItem[];
+  book?: MediaItem[];
+  movie?: MediaItem[];
+  music?: MediaItem[];
+}
+
+interface MediaItem {
+  id: string;
+  title: string;
+  type: string;
+  poster_url: string;
+  genre?: string | string[];
+  author?: string;
+  artist?: string;
+}
+
+interface TopItem {
+  title: string;
+  type: string;
+  poster_url: string;
+  rating: number;
+  author?: string;
+  artist?: string;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -55,21 +87,22 @@ export async function GET(request: NextRequest) {
     let items_loved = 0;
 
     const genreCounts: Record<string, number> = {};
-    const topItems: any[] = [];
+    const topItems: TopItem[] = [];
 
-    libraryItems.forEach((item: any) => {
-      const media = item.anime || item.manga || item.book || item.movie || item.music;
-      if (!media) return;
+    libraryItems.forEach((item: LibraryItem) => {
+      const mediaItemArray = item.anime || item.manga || item.book || item.movie || item.music;
+      if (!mediaItemArray || mediaItemArray.length === 0) return;
+      const media = mediaItemArray[0];
 
       // Count by type
-      if (item.anime) total_anime++;
-      if (item.manga) total_manga++;
-      if (item.book) total_books++;
-      if (item.movie) total_movies++;
-      if (item.music) total_music++;
+      if (item.anime && item.anime.length > 0) total_anime++;
+      if (item.manga && item.manga.length > 0) total_manga++;
+      if (item.book && item.book.length > 0) total_books++;
+      if (item.movie && item.movie.length > 0) total_movies++;
+      if (item.music && item.music.length > 0) total_music++;
 
       // Rating stats
-      if (item.rating) {
+      if (item.rating !== null && item.rating !== undefined) {
         total_rating += item.rating;
         if (item.rating >= 9) items_loved++;
       }
@@ -82,7 +115,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Top items
-      if (topItems.length < 10 && item.rating >= 8) {
+      if (item.rating !== null && item.rating !== undefined && topItems.length < 10 && item.rating >= 8) {
         topItems.push({
           title: media.title,
           type: media.type,

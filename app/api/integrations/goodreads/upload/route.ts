@@ -81,20 +81,20 @@ export async function POST(request: NextRequest) {
       errors: result.errors,
       message: `Successfully imported ${result.imported} books${result.errors > 0 ? ` (${result.errors} errors)` : ""}`,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error uploading Goodreads CSV:", error);
     
     // Check if it's a user not found error
-    if (error.message?.includes("User not found")) {
+    if (error instanceof Error && error.message.includes("User not found")) {
       return NextResponse.json(
         formatErrorResponse(new UnauthorizedError("User account not found. Please sign out and sign in again.")),
         { status: 401 }
       );
     }
     
-    const formatted = formatErrorResponse(error);
+    const formatted = formatErrorResponse(error instanceof Error ? error : new Error("Upload failed"));
     const statusCode = error instanceof Error && "statusCode" in error 
-      ? (error as any).statusCode 
+      ? (error as { statusCode?: number }).statusCode 
       : 500;
 
     return NextResponse.json(formatted, { status: statusCode });

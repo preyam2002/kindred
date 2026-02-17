@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 import { scrapeLetterboxdProfile } from "@/lib/scrapers/letterboxd-scraper";
 import { importLetterboxdScraped } from "@/lib/integrations/letterboxd";
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     const session = await auth();
 
@@ -60,13 +60,12 @@ export async function POST(request: NextRequest) {
         imported: result.imported,
         errors: result.errors,
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Letterboxd sync failed:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to sync Letterboxd data. Please try again or re-upload CSV.";
       return NextResponse.json(
         {
-          error:
-            error?.message ||
-            "Failed to sync Letterboxd data. Please try again or re-upload CSV.",
+          error: errorMessage,
         },
         { status: 500 }
       );

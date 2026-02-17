@@ -93,11 +93,11 @@ export async function POST(request: NextRequest) {
       errors: result.errors,
       message: `Successfully imported ${result.imported} films${result.errors > 0 ? ` (${result.errors} errors)` : ""}`,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error uploading Letterboxd CSV:", error);
-    const formatted = formatErrorResponse(error);
+    const formatted = formatErrorResponse(error instanceof Error ? error : new Error("Upload failed"));
     const statusCode = error instanceof Error && "statusCode" in error 
-      ? (error as any).statusCode 
+      ? (error as { statusCode?: number }).statusCode 
       : 500;
 
     return NextResponse.json(formatted, { status: statusCode });

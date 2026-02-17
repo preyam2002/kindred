@@ -4,6 +4,10 @@ import { scrapeLetterboxdProfile } from "@/lib/scrapers/letterboxd-scraper";
 import { importLetterboxdScraped } from "@/lib/integrations/letterboxd";
 import { UnauthorizedError, ValidationError, formatErrorResponse } from "@/lib/errors";
 
+interface AppError extends Error {
+  statusCode?: number;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
@@ -50,7 +54,7 @@ export async function POST(request: NextRequest) {
     console.error("Error in Letterboxd scrape API:", error);
     const formatted = formatErrorResponse(error);
     const statusCode = error instanceof Error && "statusCode" in error 
-      ? (error as any).statusCode 
+      ? (error as AppError).statusCode 
       : 500;
 
     return NextResponse.json(formatted, { status: statusCode });

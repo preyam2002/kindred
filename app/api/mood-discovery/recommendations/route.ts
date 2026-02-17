@@ -3,6 +3,20 @@ import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 import { fetchUserMediaWithItems } from "@/lib/db/media-helpers";
 
+interface MoodRecommendation {
+  media: {
+    id: string;
+    title: string;
+    type: string;
+    poster_url?: string;
+    genre?: string[];
+    author?: string;
+    artist?: string;
+  };
+  reason: string;
+  moodMatch: number;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -66,7 +80,7 @@ export async function GET(request: NextRequest) {
       });
     });
 
-    const recommendations: any[] = [];
+    const recommendations: MoodRecommendation[] = [];
     const mediaTypes = ["anime", "manga", "book", "movie", "music"];
 
     // Fetch potential recommendations from each media type

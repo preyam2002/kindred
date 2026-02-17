@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 import { calculateMashScore } from "@/lib/matching";
 import { fetchMediaItemsForUserMedia } from "@/lib/db/media-helpers";
 import type { UserMedia, Match, User } from "@/types/database";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const session = await auth();
 
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
       .limit(5);
 
     // Fetch user details for matches
-    let enrichedMatches = [];
+    const enrichedMatches: Array<Match & { otherUser: { id: string; username: string; avatar?: string } }> = [];
     if (matches && !matchesError) {
       for (const match of matches) {
         const otherUserId = match.user1_id === userId ? match.user2_id : match.user1_id;

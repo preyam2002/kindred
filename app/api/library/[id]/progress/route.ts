@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 
+interface ProgressUpdate {
+  updated_at: string;
+  progress?: number;
+  progress_total?: number;
+}
+
+interface UserMediaData {
+  id: string;
+  user_id: string;
+  [key: string]: unknown;
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -33,7 +45,7 @@ export async function PATCH(
     }
 
     // Build update object
-    const updates: any = {
+    const updates: ProgressUpdate = {
       updated_at: new Date().toISOString(),
     };
 

@@ -193,10 +193,10 @@ export async function POST(request: NextRequest) {
     // Build context about the user
     const userContext = buildUserContext(
       userData,
-      userMedia || [],
+      userMedia,
       matches || [],
       tasteProfile,
-      challengeProgress
+      challengeProgress || undefined
     );
 
     // Check if API key is configured
@@ -370,12 +370,47 @@ export async function GET(request: NextRequest) {
   }
 }
 
+interface UserRecord {
+  username?: string;
+  bio?: string;
+}
+
+interface MatchRecord {
+  similarity_score: number;
+}
+
+interface TasteProfileRecord {
+  top_genres?: string[];
+  mainstream_score?: number;
+  diversity_score?: number;
+  rating_average?: number;
+}
+
+interface ChallengeProgressRecord {
+  current_streak?: number;
+  total_points?: number;
+  level?: number;
+}
+
+interface MediaItemInfo {
+  title?: string;
+  author?: string;
+  artist?: string;
+  year?: number;
+}
+
+interface EnrichedUserMedia {
+  media_type: string;
+  rating: number | null;
+  media_item?: MediaItemInfo;
+}
+
 function buildUserContext(
-  userData: any,
-  userMedia: Array<{ media_type: string; rating: number | null; media_item: any }>,
-  matches: any[],
-  tasteProfile?: any,
-  challengeProgress?: any
+  userData: UserRecord | null,
+  userMedia: EnrichedUserMedia[],
+  matches: MatchRecord[],
+  tasteProfile?: TasteProfileRecord,
+  challengeProgress?: ChallengeProgressRecord
 ): string {
   let context = "";
 

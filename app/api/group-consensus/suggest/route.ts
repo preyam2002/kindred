@@ -49,7 +49,18 @@ export async function GET(request: NextRequest) {
       userMedia.map((item) => `${item.media_type}:${item.media_id}`)
     );
 
-    const candidates: any[] = [];
+    const candidates: Array<{
+      id: string;
+      media: {
+        title: string;
+        type: string;
+        poster_url?: string;
+        genre: string[];
+      };
+      votes: number;
+      predicted_rating: number;
+      _score: number;
+    }> = [];
 
     // Fetch potential candidates from each media type
     for (const mediaType of mediaTypes) {

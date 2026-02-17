@@ -2,6 +2,37 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 
+interface Collection {
+  id: string;
+  [key: string]: unknown;
+}
+
+interface CollectionItem {
+  id: string;
+  media_type: string;
+  media_id: string;
+  sort_order: number;
+  notes: string | null;
+  anime?: { id: string; title: string; type: string; poster_url: string; genre?: string | string[] }[];
+  manga?: { id: string; title: string; type: string; poster_url: string; genre?: string | string[] }[];
+  book?: { id: string; title: string; type: string; poster_url: string; genre?: string | string[]; author?: string }[];
+  movie?: { id: string; title: string; type: string; poster_url: string; genre?: string | string[] }[];
+  music?: { id: string; title: string; type: string; poster_url: string; genre?: string | string[]; artist?: string }[];
+}
+
+interface FormattedItem {
+  id: string;
+  media_id: string;
+  media_type: string;
+  title: string | undefined;
+  poster_url: string | undefined;
+  author?: string;
+  artist?: string;
+  genre: string | string[] | undefined;
+  notes: string | null;
+  sort_order: number;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -47,9 +78,10 @@ export async function GET(
 
     // Format items
     const formattedItems = (items || [])
-      .map((item: any) => {
-        const media = item.anime || item.manga || item.book || item.movie || item.music;
-        if (!media) return null;
+      .map((item: CollectionItem) => {
+        const mediaArray = item.anime || item.manga || item.book || item.movie || item.music;
+        if (!mediaArray || mediaArray.length === 0) return null;
+        const media = mediaArray[0];
 
         return {
           id: item.id,
@@ -57,14 +89,14 @@ export async function GET(
           media_type: item.media_type,
           title: media.title,
           poster_url: media.poster_url,
-          author: media.author,
-          artist: media.artist,
+          author: (media as { author?: string }).author,
+          artist: (media as { artist?: string }).artist,
           genre: media.genre,
           notes: item.notes,
           sort_order: item.sort_order,
         };
       })
-      .filter(Boolean);
+      .filter((item: FormattedItem | null): item is FormattedItem => item !== null);
 
     return NextResponse.json({
       ...collection,

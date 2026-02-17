@@ -3,7 +3,12 @@ import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 import { calculateMashScore } from "@/lib/matching";
 import { generateCompatibilityInsights } from "@/lib/insights";
-import { UnauthorizedError, formatErrorResponse } from "@/lib/errors";
+import type { User } from "@/types/database";
+
+interface UserDataResult {
+  id: string;
+  username: string;
+}
 
 export async function GET(
   request: NextRequest,
@@ -38,8 +43,8 @@ export async function GET(
 
     // Generate insights
     const insights = await generateCompatibilityInsights(
-      user1Data as any,
-      user2Data as any,
+      user1Data as unknown as User,
+      user2Data as unknown as User,
       mashResult
     );
 

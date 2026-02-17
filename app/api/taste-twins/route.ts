@@ -2,6 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 
+interface MyLibraryItem {
+  media_id: string;
+  rating: number | null;
+}
+
+interface OtherLibraryItem {
+  user_email: string;
+  media_id: string;
+  rating: number | null;
+}
+
+interface Twin {
+  user_id: string;
+  username: string;
+  compatibility_score: number;
+  shared_favorites: number;
+  shared_genres: string[];
+  influence_score: number;
+  recommendations_from_them: number;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -21,9 +42,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ twins: [] });
     }
 
-    const myMediaIds = new Set(myLibrary.map((item: any) => item.media_id));
+    const myMediaIds = new Set(myLibrary.map((item: MyLibraryItem) => item.media_id));
     const myRatings = new Map(
-      myLibrary.map((item: any) => [item.media_id, item.rating])
+      myLibrary.map((item: MyLibraryItem) => [item.media_id, item.rating])
     );
 
     // Get other users' libraries
@@ -38,19 +59,20 @@ export async function GET(request: NextRequest) {
     }
 
     // Group by user
-    const userLibraries = new Map<string, Array<{ media_id: string; rating: number }>>();
-    otherUsers.forEach((item: any) => {
+    const userLibraries = new Map<string, OtherLibraryItem[]>();
+    otherUsers.forEach((item: OtherLibraryItem) => {
       if (!userLibraries.has(item.user_email)) {
         userLibraries.set(item.user_email, []);
       }
       userLibraries.get(item.user_email)!.push({
+        user_email: item.user_email,
         media_id: item.media_id,
         rating: item.rating,
       });
     });
 
     // Calculate compatibility
-    const twins: any[] = [];
+    const twins: Twin[] = [];
 
     userLibraries.forEach((theirLibrary, userEmail) => {
       const theirMediaIds = new Set(theirLibrary.map((item) => item.media_id));

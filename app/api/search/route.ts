@@ -2,6 +2,66 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 
+interface User {
+  id: string;
+  username: string;
+  email: string;
+  created_at: string;
+}
+
+interface Anime {
+  id: string;
+  title: string;
+  poster_url: string;
+  type: string;
+}
+
+interface Manga {
+  id: string;
+  title: string;
+  poster_url: string;
+  type: string;
+}
+
+interface Book {
+  id: string;
+  title: string;
+  poster_url: string;
+  author: string;
+  type: string;
+}
+
+interface Movie {
+  id: string;
+  title: string;
+  poster_url: string;
+  type: string;
+}
+
+interface MediaResult {
+  type: "media";
+  media_type: string;
+  id: string;
+  title: string;
+  subtitle: string;
+  poster_url: string | null;
+  url: string;
+}
+
+interface UserResult {
+  type: "user";
+  id: string;
+  title: string;
+  subtitle: string;
+  url: string;
+}
+
+interface SearchResults {
+  users: UserResult[];
+  media: MediaResult[];
+  total: number;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -13,9 +73,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ results: [] });
     }
 
-    const results: any = {
+    const results: SearchResults = {
       users: [],
       media: [],
+      total: 0,
     };
 
     // Search users by username
@@ -27,7 +88,7 @@ export async function GET(request: NextRequest) {
         .limit(10);
 
       if (users) {
-        results.users = users.map((user) => ({
+        results.users = users.map((user: User) => ({
           type: "user",
           id: user.id,
           title: user.username,
@@ -39,7 +100,7 @@ export async function GET(request: NextRequest) {
 
     // Search media items
     if (type === "all" || type === "media") {
-      const mediaResults = [];
+      const mediaResults: MediaResult[] = [];
 
       // Search anime
       const { data: anime } = await supabase
@@ -50,8 +111,8 @@ export async function GET(request: NextRequest) {
 
       if (anime) {
         mediaResults.push(
-          ...anime.map((item) => ({
-            type: "media",
+          ...anime.map((item: Anime): MediaResult => ({
+            type: "media" as const,
             media_type: "anime",
             id: item.id,
             title: item.title,
@@ -71,8 +132,8 @@ export async function GET(request: NextRequest) {
 
       if (manga) {
         mediaResults.push(
-          ...manga.map((item) => ({
-            type: "media",
+          ...manga.map((item: Manga): MediaResult => ({
+            type: "media" as const,
             media_type: "manga",
             id: item.id,
             title: item.title,
@@ -92,8 +153,8 @@ export async function GET(request: NextRequest) {
 
       if (books) {
         mediaResults.push(
-          ...books.map((item) => ({
-            type: "media",
+          ...books.map((item: Book): MediaResult => ({
+            type: "media" as const,
             media_type: "book",
             id: item.id,
             title: item.title,
@@ -113,8 +174,8 @@ export async function GET(request: NextRequest) {
 
       if (movies) {
         mediaResults.push(
-          ...movies.map((item) => ({
-            type: "media",
+          ...movies.map((item: Movie): MediaResult => ({
+            type: "media" as const,
             media_type: "movie",
             id: item.id,
             title: item.title,

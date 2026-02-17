@@ -57,26 +57,26 @@ export async function GET(request: NextRequest) {
     const totalClicks = clicks?.length || 0;
     const totalReferrals = referrals?.length || 0;
     const convertedReferrals =
-      referrals?.filter((r: any) => r.referred_user_id !== null).length || 0;
+      referrals?.filter((r) => r.referred_user_id !== null).length || 0;
 
     // Calculate viral coefficient (K-factor)
     // K = (shares per user) × (conversion rate)
     // Simplified: total conversions / total users who shared
-    const uniqueSharers = new Set(shares?.map((s: any) => s.user_id) || [])
+    const uniqueSharers = new Set(shares?.map((s) => s.user_id) || [])
       .size;
     const kFactor =
       uniqueSharers > 0 ? convertedReferrals / uniqueSharers : 0;
 
     // Breakdown by platform
     const sharesByPlatform: Record<string, number> = {};
-    shares?.forEach((share: any) => {
+    shares?.forEach((share) => {
       sharesByPlatform[share.platform] =
         (sharesByPlatform[share.platform] || 0) + 1;
     });
 
     // Breakdown by share type
     const sharesByType: Record<string, number> = {};
-    shares?.forEach((share: any) => {
+    shares?.forEach((share) => {
       sharesByType[share.share_type] =
         (sharesByType[share.share_type] || 0) + 1;
     });
@@ -96,14 +96,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Fill in actual data
-    shares?.forEach((share: any) => {
+    shares?.forEach((share) => {
       const dateStr = new Date(share.created_at).toISOString().split("T")[0];
       if (dailyBreakdown[dateStr]) {
         dailyBreakdown[dateStr].shares++;
       }
     });
 
-    clicks?.forEach((click: any) => {
+    clicks?.forEach((click) => {
       const dateStr = new Date(click.clicked_at).toISOString().split("T")[0];
       if (dailyBreakdown[dateStr]) {
         dailyBreakdown[dateStr].clicks++;
@@ -111,8 +111,8 @@ export async function GET(request: NextRequest) {
     });
 
     referrals
-      ?.filter((r: any) => r.converted_at)
-      .forEach((referral: any) => {
+      ?.filter((r) => r.converted_at)
+      .forEach((referral) => {
         const dateStr = new Date(referral.converted_at)
           .toISOString()
           .split("T")[0];
@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
 
     // Top sharers
     const sharerCounts: Record<string, number> = {};
-    shares?.forEach((share: any) => {
+    shares?.forEach((share) => {
       sharerCounts[share.user_id] = (sharerCounts[share.user_id] || 0) + 1;
     });
 

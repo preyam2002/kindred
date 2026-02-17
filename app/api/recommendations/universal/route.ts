@@ -3,6 +3,25 @@ import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 import { fetchUserMediaWithItems } from "@/lib/db/media-helpers";
 
+interface UniversalRecommendation {
+  recommended_item: {
+    id: string;
+    title: string;
+    type: string;
+    poster_url?: string;
+    genre?: string[];
+    author?: string;
+    artist?: string;
+  };
+  reason: string;
+  score: number;
+  based_on: {
+    title: string | undefined;
+    type: string;
+  } | null;
+  cross_media: boolean;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -27,9 +46,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user's favorite items (rated >= 8)
-    const favoriteItems = userMedia.filter(
-      (item) => item.rating && item.rating >= 8
-    );
+    const favoriteItems = userMedia.filter((item) => item.rating && item.rating >= 8);
 
     if (favoriteItems.length === 0) {
       // Fall back to all rated items
@@ -56,7 +73,7 @@ export async function GET(request: NextRequest) {
     );
 
     // Fetch potential recommendations from each media type
-    const recommendations: any[] = [];
+    const recommendations: UniversalRecommendation[] = [];
 
     const mediaTypes = ["anime", "manga", "book", "movie", "music"];
 
@@ -93,10 +110,11 @@ export async function GET(request: NextRequest) {
         if (genreScore === 0) continue;
 
         // Find which favorite item this is most similar to
-        let bestMatch: any = null;
+        let bestMatch: (typeof favoriteItems[number]) | null = null;
         let bestMatchScore = 0;
 
-        favoriteItems.forEach((fav) => {
+        for (let i = 0; i < favoriteItems.length; i++) {
+          const fav = favoriteItems[i];
           const favGenres = fav.media_items?.genre || [];
           const overlap = itemGenres.filter((g: string) => favGenres.includes(g)).length;
           const score = overlap > 0 ? (overlap / Math.max(favGenres.length, itemGenres.length)) * 100 : 0;
@@ -105,7 +123,7 @@ export async function GET(request: NextRequest) {
             bestMatchScore = score;
             bestMatch = fav;
           }
-        });
+        }
 
         // Determine if this is cross-media
         const isCrossMedia = bestMatch && bestMatch.media_type !== mediaType;
@@ -135,7 +153,7 @@ export async function GET(request: NextRequest) {
             title: bestMatch.media_items?.title || "your favorites",
             type: bestMatch.media_type,
           } : null,
-          cross_media: isCrossMedia,
+          cross_media: isCrossMedia ?? false,
         });
       }
     }

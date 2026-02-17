@@ -82,9 +82,9 @@ export async function GET(request: NextRequest) {
     let tokens;
     try {
       tokens = await exchangeSpotifyToken(code, callbackUrl);
-    } catch (error: any) {
+    } catch (error) {
       console.error("[Spotify][Callback] Error exchanging Spotify token", {
-        error: error.message,
+        error: error instanceof Error ? error.message : "Unknown error",
         callbackUrl,
         hasCode: !!code,
       });

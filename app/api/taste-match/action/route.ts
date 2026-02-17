@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 
+interface MatchUpdateData {
+  user1_status?: string;
+  user2_status?: string;
+  matched_at?: string;
+  updated_at: string;
+}
+
+interface MatchInsertData {
+  user1_id: string;
+  user2_id: string;
+  user1_status: string;
+  user2_status: string;
+  compatibility_score: number;
+  shared_items_count: number;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
@@ -48,7 +64,7 @@ export async function POST(request: NextRequest) {
 
     if (existingMatch) {
       // Update existing match
-      const updateData: any = {};
+      const updateData: MatchUpdateData = { updated_at: new Date().toISOString() };
 
       if (isUser1) {
         updateData.user1_status = status;
@@ -87,7 +103,7 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // Create new match record
-      const insertData: any = {
+      const insertData: MatchInsertData = {
         user1_id,
         user2_id,
         user1_status: isUser1 ? status : "pending",

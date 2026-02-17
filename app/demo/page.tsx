@@ -197,7 +197,8 @@ function SwipeCard({
   const rotate = useTransform(x, [-200, 200], [-30, 30]);
   const opacity = useTransform(x, [-200, -100, 0, 100, 200], [0, 1, 1, 1, 0]);
 
-  const handleDragEnd = (_: any, info: PanInfo) => {
+   
+  const handleDragEnd = (_: unknown, info: PanInfo) => {
     const swipeThreshold = 100;
 
     if (info.offset.x > swipeThreshold) {

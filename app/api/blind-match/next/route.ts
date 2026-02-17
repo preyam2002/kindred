@@ -1,6 +1,22 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
+
+interface TasteProfile {
+  top_genres?: string[];
+  mainstream_score?: number;
+  diversity_score?: number;
+  rating_average?: number;
+  user_email: string;
+}
+
+interface ScoredCandidate {
+  user_id: string;
+  compatibility_score: number;
+  shared_genres: string[];
+  top_genres: string[];
+  personality_match: number;
+}
 
 export async function GET() {
   try {
@@ -54,8 +70,8 @@ export async function GET() {
     };
 
     const scoredCandidates = candidates
-      .filter((c: any) => !swipedEmails.has(c.user_email))
-      .map((candidate: any) => {
+      .filter((c: TasteProfile) => !swipedEmails.has(c.user_email))
+      .map((candidate: TasteProfile): ScoredCandidate => {
         const theirGenres = candidate.top_genres || [];
 
         // Calculate genre overlap
@@ -96,8 +112,8 @@ export async function GET() {
           personality_match: Math.round(personalityScore),
         };
       })
-      .filter((c: any) => c.compatibility_score >= 50) // Only show 50%+ matches
-      .sort((a: any, b: any) => b.compatibility_score - a.compatibility_score);
+      .filter((c: ScoredCandidate) => c.compatibility_score >= 50) // Only show 50%+ matches
+      .sort((a: ScoredCandidate, b: ScoredCandidate) => b.compatibility_score - a.compatibility_score);
 
     if (scoredCandidates.length === 0) {
       return NextResponse.json({ candidate: null });

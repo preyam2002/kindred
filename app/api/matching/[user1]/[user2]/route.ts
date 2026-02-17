@@ -3,6 +3,16 @@ import { supabase } from "@/lib/db/supabase";
 import { getOrCreateMatch, calculateMashScore } from "@/lib/matching";
 import { NotFoundError, formatErrorResponse, withRetry } from "@/lib/errors";
 
+interface AppError extends Error {
+  statusCode?: number;
+}
+
+interface UserData {
+  id: string;
+  username: string;
+  [key: string]: unknown;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ user1: string; user2: string }> }
@@ -66,7 +76,7 @@ export async function GET(
     console.error("Error in matching:", error);
     const formatted = formatErrorResponse(error);
     const statusCode = error instanceof Error && "statusCode" in error 
-      ? (error as any).statusCode 
+      ? (error as AppError).statusCode 
       : 500;
 
     return NextResponse.json(formatted, { status: statusCode });
