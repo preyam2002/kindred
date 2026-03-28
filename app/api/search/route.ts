@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
 
 interface User {
   id: string;
@@ -64,6 +65,11 @@ interface SearchResults {
 
 export async function GET(request: NextRequest) {
   try {
+    // Rate limit search: 30 per minute
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const rl = checkRateLimit(`search:${ip}`, RATE_LIMITS.search);
+    if (!rl.success) return rateLimitResponse(rl);
+
     const session = await auth();
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("q") || "";

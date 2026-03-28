@@ -17,7 +17,10 @@ export async function GET(request: NextRequest) {
     const media = await fetchUserMediaWithItems(userId);
 
     if (!media || media.length === 0) {
-      return NextResponse.json(null);
+      return NextResponse.json({
+        error: "No media in library",
+        message: "Add some media to your library to generate your Taste DNA",
+      }, { status: 404 });
     }
 
     // Filter out items without ratings for some calculations

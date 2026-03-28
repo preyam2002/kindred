@@ -13,9 +13,16 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { target_user_id, liked } = body;
 
-    if (!target_user_id || liked === undefined) {
+    if (!target_user_id || typeof target_user_id !== "string" || liked === undefined) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Missing required fields: target_user_id (string) and liked (boolean)" },
+        { status: 400 }
+      );
+    }
+
+    if (typeof liked !== "boolean") {
+      return NextResponse.json(
+        { error: "liked must be a boolean" },
         { status: 400 }
       );
     }

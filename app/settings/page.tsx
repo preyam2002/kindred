@@ -489,10 +489,22 @@ export default function SettingsPage() {
 
   const handleDataExport = async () => {
     setMessage({ type: "success", text: "Preparing your data export..." });
-    // TODO: Implement actual data export
-    setTimeout(() => {
-      setMessage({ type: "success", text: "Data export sent to your email!" });
-    }, 2000);
+    try {
+      const res = await fetch("/api/settings/export");
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `kindred-export-${new Date().toISOString().split("T")[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setMessage({ type: "success", text: "Data export downloaded!" });
+    } catch {
+      setMessage({ type: "error", text: "Failed to export data. Please try again." });
+    }
   };
 
   const handleAccountDelete = async () => {
@@ -500,18 +512,54 @@ export default function SettingsPage() {
       setMessage({ type: "error", text: "Please type DELETE to confirm" });
       return;
     }
-    // TODO: Implement actual account deletion
-    setMessage({ type: "success", text: "Account deletion initiated..." });
+    try {
+      const res = await fetch("/api/settings", { method: "DELETE" });
+      if (!res.ok) throw new Error("Delete failed");
+      setMessage({ type: "success", text: "Account deleted. Redirecting..." });
+      setTimeout(() => { window.location.href = "/"; }, 2000);
+    } catch {
+      setMessage({ type: "error", text: "Failed to delete account. Please try again." });
+    }
   };
 
   const handleSavePrivacy = async () => {
-    // TODO: Implement actual API call to save privacy settings
-    setMessage({ type: "success", text: "Privacy settings saved!" });
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          section: "privacy",
+          isProfilePublic: isProfilePublic,
+          showEmail: showEmail,
+          showLibrary: showLibrary,
+        }),
+      });
+      if (!res.ok) throw new Error("Save failed");
+      setMessage({ type: "success", text: "Privacy settings saved!" });
+    } catch {
+      setMessage({ type: "error", text: "Failed to save privacy settings." });
+    }
   };
 
   const handleSaveNotifications = async () => {
-    // TODO: Implement actual API call to save notification settings
-    setMessage({ type: "success", text: "Notification preferences saved!" });
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          section: "notifications",
+          emailNotifications,
+          matchNotifications,
+          challengeNotifications,
+          commentNotifications,
+          streakReminders,
+        }),
+      });
+      if (!res.ok) throw new Error("Save failed");
+      setMessage({ type: "success", text: "Notification preferences saved!" });
+    } catch {
+      setMessage({ type: "error", text: "Failed to save notification settings." });
+    }
   };
 
   return (

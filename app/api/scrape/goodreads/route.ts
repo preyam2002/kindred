@@ -3,6 +3,7 @@ import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { scrapeGoodreadsProfile } from "@/lib/scrapers/goodreads-scraper";
 import { importGoodreadsScraped } from "@/lib/integrations/goodreads";
 import { UnauthorizedError, ValidationError, formatErrorResponse } from "@/lib/errors";
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
 
 interface AppError extends Error {
   statusCode?: number;
@@ -18,6 +19,10 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
+
+    // Rate limit scraping: 5 per minute
+    const rl = checkRateLimit(`scrape:${session.user.id}`, RATE_LIMITS.scrape);
+    if (!rl.success) return rateLimitResponse(rl);
 
     const body = await request.json();
     const { username, userId, profileUrl } = body;

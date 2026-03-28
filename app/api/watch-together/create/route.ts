@@ -13,9 +13,23 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { name, description, is_collaborative, is_public } = body;
 
-    if (!name || !name.trim()) {
+    if (!name || typeof name !== "string" || !name.trim()) {
       return NextResponse.json(
         { error: "Collection name is required" },
+        { status: 400 }
+      );
+    }
+
+    if (name.length > 200) {
+      return NextResponse.json(
+        { error: "Collection name must be under 200 characters" },
+        { status: 400 }
+      );
+    }
+
+    if (description && typeof description === "string" && description.length > 2000) {
+      return NextResponse.json(
+        { error: "Description must be under 2000 characters" },
         { status: 400 }
       );
     }

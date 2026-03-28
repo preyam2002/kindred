@@ -75,6 +75,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const validMediaTypes = ["anime", "manga", "book", "movie", "music"];
+    if (!validMediaTypes.includes(media_type)) {
+      return NextResponse.json(
+        { error: `media_type must be one of: ${validMediaTypes.join(", ")}` },
+        { status: 400 }
+      );
+    }
+
+    if (rating !== undefined && rating !== null) {
+      if (typeof rating !== "number" || rating < 1 || rating > 10 || !Number.isInteger(rating)) {
+        return NextResponse.json(
+          { error: "rating must be an integer between 1 and 10" },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (typeof content !== "string" || content.trim().length === 0 || content.length > 5000) {
+      return NextResponse.json(
+        { error: "content must be a non-empty string (max 5000 characters)" },
+        { status: 400 }
+      );
+    }
+
     // Upsert comment (update if exists, insert if new)
     const { data: comment, error } = await supabase
       .from("media_comments")

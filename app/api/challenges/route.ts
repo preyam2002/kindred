@@ -115,9 +115,7 @@ export async function GET() {
 }
 
 function calculateDiversity(items: { media_type: string }[]): number {
-  const types = new Set<string>();
-
-  // This would need to check the actual media types from joined data
-  // For now, return a placeholder
-  return Math.min(3, items.length > 0 ? 1 : 0);
+  const types = new Set(items.map((item) => item.media_type));
+  // Score: number of distinct media types the user has rated (max 5: anime, manga, book, movie, music)
+  return types.size;
 }

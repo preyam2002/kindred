@@ -4,6 +4,8 @@ import { supabase } from "@/lib/db/supabase";
 import { fetchMediaItemsForUserMedia } from "@/lib/db/media-helpers";
 import type { UserMedia } from "@/types/database";
 import OpenAI from "openai";
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || "",
@@ -41,6 +43,11 @@ export async function POST(request: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // Rate limit AI chat: 10 requests per minute
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const rl = checkRateLimit(`chat:${session.user.id}:${ip}`, RATE_LIMITS.ai);
+    if (!rl.success) return rateLimitResponse(rl);
 
     const userId = session.user.id;
     const body = await request.json();
