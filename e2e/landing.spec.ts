@@ -1,65 +1,71 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Landing Page", () => {
-  test("renders hero section with branding", async ({ page }) => {
+  test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator("text=Connect through")).toBeVisible();
+  });
+
+  test("renders hero section with headline and subtext", async ({ page }) => {
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.locator("text=what you love")).toBeVisible();
-    await expect(
-      page.locator("text=Aggregate your tracked activity")
-    ).toBeVisible();
+    await expect(page.locator("text=Aggregate your tracked activity")).toBeVisible();
   });
 
-  test("shows navigation with login and signup links", async ({ page }) => {
-    await page.goto("/");
-    const loginLink = page.locator('a[href="/auth/login"]');
-    const signupLink = page.locator('a[href="/auth/signup"]');
-    await expect(loginLink).toBeVisible();
-    await expect(signupLink).toBeVisible();
+  test("renders nav bar with logo and auth links", async ({ page }) => {
+    await expect(page.locator("nav")).toBeVisible();
+    await expect(page.locator("text=kindred").first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "Log in" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Sign up" })).toBeVisible();
   });
 
-  test("displays all four platform cards", async ({ page }) => {
-    await page.goto("/");
-    // Platform names appear in card divs with font-mono class
-    for (const platform of [
-      "Goodreads",
-      "MyAnimeList",
-      "Letterboxd",
-      "Spotify",
-    ]) {
-      await expect(
-        page.locator(".font-mono", { hasText: platform })
-      ).toBeVisible();
+  test("shows all four platform cards (Goodreads, MAL, Letterboxd, Spotify)", async ({ page }) => {
+    for (const platform of ["Goodreads", "MyAnimeList", "Letterboxd", "Spotify"]) {
+      await expect(page.locator(".font-mono", { hasText: platform })).toBeVisible();
     }
   });
 
-  test("displays value propositions", async ({ page }) => {
-    await page.goto("/");
+  test("shows three value propositions", async ({ page }) => {
     await expect(page.locator("text=Endless Discovery")).toBeVisible();
     await expect(page.locator("text=AI-Powered Matches")).toBeVisible();
     await expect(page.locator("text=Import Everything")).toBeVisible();
   });
 
-  test("login link navigates to login page", async ({ page }) => {
-    await page.goto("/");
-    await page.click('a[href="/auth/login"]');
+  test("login link navigates to /auth/login", async ({ page }) => {
+    await page.getByRole("link", { name: "Log in" }).click();
     await expect(page).toHaveURL(/\/auth\/login/);
+    await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
   });
 
-  test("signup link navigates to signup page", async ({ page }) => {
-    await page.goto("/");
-    await page.click('a[href="/auth/signup"]');
+  test("signup link navigates to /auth/signup", async ({ page }) => {
+    await page.getByRole("link", { name: "Sign up" }).click();
     await expect(page).toHaveURL(/\/auth\/signup/);
+    await expect(page.getByRole("heading", { name: "Create account" })).toBeVisible();
   });
 
-  test("waitlist link navigates to waitlist page", async ({ page }) => {
-    await page.goto("/");
-    await page.click("text=Join Waitlist");
+  test("waitlist button navigates to /waitlist", async ({ page }) => {
+    await page.getByRole("link", { name: "Join Waitlist" }).click();
     await expect(page).toHaveURL(/\/waitlist/);
   });
 
-  test("has correct page title", async ({ page }) => {
-    await page.goto("/");
+  test("has correct meta title containing 'kindred'", async ({ page }) => {
     await expect(page).toHaveTitle(/kindred/);
+  });
+
+  test("has meta description", async ({ page }) => {
+    const desc = await page.locator('meta[name="description"]').getAttribute("content");
+    expect(desc).toBeTruthy();
+    expect(desc!.length).toBeGreaterThan(20);
+  });
+
+  test("has lang='en' on html element", async ({ page }) => {
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  });
+
+  test("page does not throw JS errors", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (err) => errors.push(err.message));
+    await page.goto("/");
+    await page.waitForTimeout(1000);
+    expect(errors).toHaveLength(0);
   });
 });

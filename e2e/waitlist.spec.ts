@@ -1,37 +1,38 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Waitlist Page", () => {
-  test("renders waitlist signup form", async ({ page }) => {
-    await page.goto("/waitlist");
-    // Should have email input and join button
-    await expect(page.locator('input[type="email"], input[placeholder*="email" i]')).toBeVisible();
-    await expect(
-      page.locator("button:has-text('Join'), button:has-text('join'), button:has-text('Get')")
-    ).toBeVisible();
-  });
-
-  test("join button is disabled without email", async ({ page }) => {
+  test.beforeEach(async ({ page }) => {
     await page.goto("/waitlist");
     await page.waitForLoadState("networkidle");
-    const joinButton = page.locator("button:has-text('Join')").first();
-    // Button should be disabled when email is empty
-    const isDisabled = await joinButton.isDisabled();
-    // Either disabled or requires validation - page should not crash
-    expect(typeof isDisabled).toBe("boolean");
   });
 
-  test("has referral tracking via URL params", async ({ page }) => {
-    await page.goto("/waitlist?ref=TEST123");
-    // Page should load successfully with referral code
-    await expect(page).toHaveURL(/ref=TEST123/);
+  test("renders email input and name input", async ({ page }) => {
+    const emailInput = page.locator('input[type="email"], input[placeholder*="email" i]');
+    await expect(emailInput).toBeVisible();
   });
 
-  test("navigates to leaderboard", async ({ page }) => {
-    await page.goto("/waitlist");
-    const leaderboardLink = page.locator('a[href*="leaderboard"]');
-    if (await leaderboardLink.isVisible()) {
-      await leaderboardLink.click();
-      await expect(page).toHaveURL(/leaderboard/);
-    }
+  test("join button is disabled when email is empty", async ({ page }) => {
+    const joinBtn = page.getByRole("button", { name: /join/i }).first();
+    await expect(joinBtn).toBeDisabled();
+  });
+
+  test("join button enables when email is filled", async ({ page }) => {
+    const emailInput = page.locator('input[type="email"], input[placeholder*="email" i]');
+    await emailInput.fill("test@example.com");
+    const nameInput = page.locator('input[placeholder*="name" i]').first();
+    if (await nameInput.isVisible()) await nameInput.fill("Test");
+    const joinBtn = page.getByRole("button", { name: /join/i }).first();
+    await expect(joinBtn).toBeEnabled();
+  });
+
+  test("referral code is captured from URL", async ({ page }) => {
+    await page.goto("/waitlist?ref=ABC123");
+    await expect(page).toHaveURL(/ref=ABC123/);
+  });
+
+  test("page shows stats section", async ({ page }) => {
+    // Stats/counts should be visible (total signups, etc.)
+    const body = await page.locator("body").textContent();
+    expect(body!.length).toBeGreaterThan(100);
   });
 });

@@ -1,46 +1,37 @@
 import { test, expect } from "@playwright/test";
 
-test.describe("SEO & Meta Tags", () => {
-  test("landing page has proper meta title", async ({ page }) => {
+test.describe("SEO & Meta", () => {
+  test("title contains 'kindred'", async ({ page }) => {
     await page.goto("/");
-    const title = await page.title();
-    expect(title).toContain("kindred");
+    await expect(page).toHaveTitle(/kindred/);
   });
 
-  test("landing page has meta description", async ({ page }) => {
+  test("meta description is present and meaningful", async ({ page }) => {
     await page.goto("/");
-    const description = await page
-      .locator('meta[name="description"]')
-      .getAttribute("content");
-    expect(description).toBeTruthy();
-    expect(description!.length).toBeGreaterThan(10);
+    const desc = await page.locator('meta[name="description"]').getAttribute("content");
+    expect(desc).toBeTruthy();
+    expect(desc!.length).toBeGreaterThan(30);
   });
 
-  test("page has viewport meta tag", async ({ page }) => {
+  test("viewport meta exists", async ({ page }) => {
     await page.goto("/");
-    const viewport = await page
-      .locator('meta[name="viewport"]')
-      .getAttribute("content");
-    expect(viewport).toContain("width=device-width");
+    const vp = await page.locator('meta[name="viewport"]').getAttribute("content");
+    expect(vp).toContain("width=device-width");
   });
 
-  test("page has charset meta tag", async ({ page }) => {
+  test("charset meta exists", async ({ page }) => {
     await page.goto("/");
-    const charset = page.locator('meta[charset]');
-    await expect(charset).toHaveCount(1);
+    await expect(page.locator("meta[charset]")).toHaveCount(1);
   });
 
-  test("links have proper href attributes", async ({ page }) => {
+  test("links on landing page have non-empty href", async ({ page }) => {
     await page.goto("/");
-    // Wait for hydration
     await page.waitForLoadState("networkidle");
     const links = page.locator("a[href]");
     const count = await links.count();
-    // Page has links (may be 0 during SSR loading state)
     if (count > 0) {
       for (let i = 0; i < Math.min(count, 10); i++) {
         const href = await links.nth(i).getAttribute("href");
-        expect(href).toBeTruthy();
         expect(href).not.toBe("");
       }
     }

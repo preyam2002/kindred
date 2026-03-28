@@ -1,65 +1,61 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Accessibility", () => {
-  test("landing page has proper heading hierarchy", async ({ page }) => {
+  test("landing page has h1", async ({ page }) => {
     await page.goto("/");
-    const h1 = page.locator("h1");
-    await expect(h1).toBeVisible();
+    await expect(page.locator("h1")).toBeVisible();
   });
 
-  test("login page has proper heading", async ({ page }) => {
+  test("login page has h1 with correct text", async ({ page }) => {
     await page.goto("/auth/login");
-    const h1 = page.locator("h1");
-    await expect(h1).toBeVisible();
-    await expect(h1).toContainText("Welcome back");
+    await expect(page.getByRole("heading", { name: "Welcome back", level: 1 })).toBeVisible();
   });
 
-  test("signup page has proper heading", async ({ page }) => {
+  test("signup page has h1 with correct text", async ({ page }) => {
     await page.goto("/auth/signup");
-    const h1 = page.locator("h1");
-    await expect(h1).toBeVisible();
-    await expect(h1).toContainText("Create account");
+    await expect(page.getByRole("heading", { name: "Create account", level: 1 })).toBeVisible();
   });
 
-  test("page has lang attribute", async ({ page }) => {
+  test("html has lang='en'", async ({ page }) => {
     await page.goto("/");
-    const lang = await page.locator("html").getAttribute("lang");
-    expect(lang).toBe("en");
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
   });
 
-  test("images have alt text", async ({ page }) => {
+  test("all images have alt text on landing page", async ({ page }) => {
     await page.goto("/");
-    const images = page.locator("img");
-    const count = await images.count();
+    const imgs = page.locator("img");
+    const count = await imgs.count();
     for (let i = 0; i < count; i++) {
-      const alt = await images.nth(i).getAttribute("alt");
-      expect(alt).toBeTruthy();
+      const alt = await imgs.nth(i).getAttribute("alt");
+      expect(alt, `Image ${i} missing alt`).toBeTruthy();
     }
   });
 
-  test("interactive elements exist for keyboard navigation", async ({ page }) => {
-    await page.goto("/");
-    // Verify there are focusable elements on the page
-    const focusableElements = page.locator("a, button, input, [tabindex]");
-    const count = await focusableElements.count();
-    expect(count).toBeGreaterThan(0);
-  });
-
-  test("buttons have accessible text", async ({ page }) => {
+  test("buttons have accessible text on login page", async ({ page }) => {
     await page.goto("/auth/login");
     const buttons = page.locator("button");
     const count = await buttons.count();
     for (let i = 0; i < count; i++) {
       const text = await buttons.nth(i).textContent();
       const ariaLabel = await buttons.nth(i).getAttribute("aria-label");
-      expect(text || ariaLabel).toBeTruthy();
+      expect(text || ariaLabel, `Button ${i} missing label`).toBeTruthy();
     }
   });
 
-  test("color contrast - text is visible", async ({ page }) => {
+  test("interactive elements exist for keyboard navigation", async ({ page }) => {
     await page.goto("/");
-    // Verify key text elements are visible (basic check)
-    await expect(page.locator("text=Connect through")).toBeVisible();
-    await expect(page.locator("text=what you love")).toBeVisible();
+    const focusable = page.locator("a, button, input, [tabindex]");
+    expect(await focusable.count()).toBeGreaterThan(0);
+  });
+
+  test("viewport meta tag exists", async ({ page }) => {
+    await page.goto("/");
+    const viewport = await page.locator('meta[name="viewport"]').getAttribute("content");
+    expect(viewport).toContain("width=device-width");
+  });
+
+  test("charset meta tag exists", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.locator("meta[charset]")).toHaveCount(1);
   });
 });
