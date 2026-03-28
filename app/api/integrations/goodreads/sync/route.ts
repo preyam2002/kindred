@@ -3,6 +3,7 @@ import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 import { scrapeGoodreadsProfile } from "@/lib/scrapers/goodreads-scraper";
 import { importGoodreadsScraped } from "@/lib/integrations/goodreads";
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function POST() {
   try {
@@ -11,6 +12,9 @@ export async function POST() {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const rl = checkRateLimit(`sync:goodreads:${session.user.id}`, RATE_LIMITS.sync);
+    if (!rl.success) return rateLimitResponse(rl);
 
     // Get Goodreads source
     const { data: source, error: sourceError } = await supabase

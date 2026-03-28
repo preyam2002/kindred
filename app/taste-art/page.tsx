@@ -468,7 +468,7 @@ export default function TasteArtPage() {
               ].map((style) => (
                 <button
                   key={style.value}
-                  onClick={() => setArtStyle(style.value as any)}
+                  onClick={() => setArtStyle(style.value as "dna" | "constellation" | "waveform" | "spiral")}
                   className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
                     artStyle === style.value
                       ? "border-primary bg-primary/5"

@@ -35,6 +35,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EditMediaDialog } from "@/components/edit-media-dialog";
 
+// Extended type for media items that may have type-specific fields
+interface MediaItemExtended extends Partial<Record<string, unknown>> {
+  title?: string;
+  poster_url?: string;
+  genre?: string[];
+  author?: string;
+  artist?: string;
+  year?: number;
+  num_episodes?: number;
+  num_chapters?: number;
+  album?: string;
+}
+
 type MediaType = "all" | "book" | "anime" | "manga" | "movie" | "music";
 type ViewMode = "grid" | "list" | "compact";
 type SortOption =
@@ -124,8 +137,8 @@ function LibraryContent() {
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const title = item.media_items?.title?.toLowerCase() || "";
-        const author = (item.media_items as any)?.author?.toLowerCase() || "";
-        const artist = (item.media_items as any)?.artist?.toLowerCase() || "";
+        const author = (item.media_items as unknown as MediaItemExtended)?.author?.toLowerCase() || "";
+        const artist = (item.media_items as unknown as MediaItemExtended)?.artist?.toLowerCase() || "";
 
         if (
           !title.includes(query) &&
@@ -745,14 +758,14 @@ function MediaCardGrid({
         </h3>
 
         {/* Creator/Author */}
-        {(item.media_items as any)?.author && (
+        {(item.media_items as unknown as MediaItemExtended)?.author && (
           <p className="text-xs text-muted-foreground truncate">
-            by {(item.media_items as any).author}
+            by {(item.media_items as unknown as MediaItemExtended).author}
           </p>
         )}
-        {(item.media_items as any)?.artist && (
+        {(item.media_items as unknown as MediaItemExtended)?.artist && (
           <p className="text-xs text-muted-foreground truncate">
-            by {(item.media_items as any).artist}
+            by {(item.media_items as unknown as MediaItemExtended).artist}
           </p>
         )}
 
@@ -872,25 +885,25 @@ function MediaCardList({
 
         <div className="space-y-0.5 sm:space-y-1 text-xs sm:text-sm text-muted-foreground">
           {/* Creator */}
-          {(item.media_items as any)?.author && (
-            <p>Author: {(item.media_items as any).author}</p>
+          {(item.media_items as unknown as MediaItemExtended)?.author && (
+            <p>Author: {(item.media_items as unknown as MediaItemExtended).author}</p>
           )}
-          {(item.media_items as any)?.artist && (
-            <p>Artist: {(item.media_items as any).artist}</p>
+          {(item.media_items as unknown as MediaItemExtended)?.artist && (
+            <p>Artist: {(item.media_items as unknown as MediaItemExtended).artist}</p>
           )}
 
           {/* Type-specific info */}
           {item.media_items?.type === "movie" &&
-            (item.media_items as any).year && (
-              <p>Year: {(item.media_items as any).year}</p>
+            (item.media_items as unknown as MediaItemExtended).year && (
+              <p>Year: {(item.media_items as unknown as MediaItemExtended).year}</p>
             )}
           {item.media_items?.type === "anime" &&
-            (item.media_items as any).num_episodes && (
-              <p>Episodes: {(item.media_items as any).num_episodes}</p>
+            (item.media_items as unknown as MediaItemExtended).num_episodes && (
+              <p>Episodes: {(item.media_items as unknown as MediaItemExtended).num_episodes}</p>
             )}
           {item.media_items?.type === "manga" &&
-            (item.media_items as any).num_chapters && (
-              <p>Chapters: {(item.media_items as any).num_chapters}</p>
+            (item.media_items as unknown as MediaItemExtended).num_chapters && (
+              <p>Chapters: {(item.media_items as unknown as MediaItemExtended).num_chapters}</p>
             )}
 
           {/* Progress */}

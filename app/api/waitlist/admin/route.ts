@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
+import { logger } from "@/lib/logger";
 
 // GET - Get waitlist statistics and entries
 export async function GET(request: NextRequest) {
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
       .range(offset, offset + limit - 1);
 
     if (error) {
-      console.error("Error fetching waitlist entries:", error);
+      logger.error("Error fetching waitlist entries", "waitlist-admin", error);
       return NextResponse.json(
         { error: "Failed to fetch entries" },
         { status: 500 }
@@ -96,7 +97,7 @@ export async function GET(request: NextRequest) {
       topReferrers: topReferrers || [],
     });
   } catch (error) {
-    console.error("Error in waitlist admin GET:", error);
+    logger.error("Error in waitlist admin GET", "waitlist-admin", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -187,7 +188,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
-    console.error("Error in waitlist admin POST:", error);
+    logger.error("Error in waitlist admin POST", "waitlist-admin", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

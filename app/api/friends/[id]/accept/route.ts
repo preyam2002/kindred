@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 // POST /api/friends/[id]/accept - Accept friend request
 export async function POST(
@@ -52,7 +53,7 @@ export async function POST(
       .eq("id", friendshipId);
 
     if (acceptError) {
-      console.error("Error accepting friend request:", acceptError);
+      logger.error("Error accepting friend request", "friends", acceptError);
       return NextResponse.json(
         { error: "Failed to accept friend request" },
         { status: 500 }
@@ -74,7 +75,7 @@ export async function POST(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Accept friend request error:", error);
+    logger.error("Accept friend request error", "friends", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

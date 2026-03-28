@@ -3,6 +3,7 @@ import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 import { calculateMashScore } from "@/lib/matching";
 import { fetchMediaItemsForUserMedia } from "@/lib/db/media-helpers";
+import { logger } from "@/lib/logger";
 import type { UserMedia, Match, User } from "@/types/database";
 
 export async function GET() {
@@ -22,7 +23,7 @@ export async function GET() {
       .eq("user_id", userId);
 
     if (mediaError) {
-      console.error("Error fetching user media:", mediaError);
+      logger.error("Error fetching user media", "dashboard", mediaError);
     }
 
     const userMediaData = (userMedia ?? []) as Array<
@@ -106,7 +107,7 @@ export async function GET() {
       .eq("user_id", userId);
 
     if (sourcesError) {
-      console.error("Error fetching sources:", sourcesError);
+      logger.error("Error fetching sources", "dashboard", sourcesError);
     }
 
     // Get recent matches (top 5 by score)
@@ -172,7 +173,7 @@ export async function GET() {
             sharedCount: mashResult.sharedCount,
           });
         } catch (error) {
-          console.error(`Error calculating match for ${user.username}:`, error);
+          logger.error(`Error calculating match for ${user.username}`, "dashboard", error);
         }
       }
 
@@ -201,7 +202,7 @@ export async function GET() {
     }
 
     if (activityError) {
-      console.error("Error fetching activity:", activityError);
+      logger.error("Error fetching activity", "dashboard", activityError);
     }
 
     return NextResponse.json({
@@ -220,7 +221,7 @@ export async function GET() {
       connectedIntegrations: sources?.map((s: { source_name: string }) => s.source_name) || [],
     });
   } catch (error) {
-    console.error("Error fetching dashboard data:", error);
+    logger.error("Error fetching dashboard data", "dashboard", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

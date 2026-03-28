@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 // DELETE /api/queue/[id] - Remove item from queue
 export async function DELETE(
@@ -46,7 +47,7 @@ export async function DELETE(
       .eq("id", itemId);
 
     if (error) {
-      console.error("Error removing from queue:", error);
+      logger.error("Error removing from queue", "queue", error);
       return NextResponse.json(
         { error: "Failed to remove from queue" },
         { status: 500 }
@@ -55,7 +56,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Remove from queue error:", error);
+    logger.error("Remove from queue error", "queue", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -117,7 +118,7 @@ export async function PATCH(
       .single();
 
     if (error) {
-      console.error("Error updating queue item:", error);
+      logger.error("Error updating queue item", "queue", error);
       return NextResponse.json(
         { error: "Failed to update queue item" },
         { status: 500 }
@@ -126,7 +127,7 @@ export async function PATCH(
 
     return NextResponse.json({ item: updated });
   } catch (error) {
-    console.error("Update queue item error:", error);
+    logger.error("Update queue item error", "queue", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

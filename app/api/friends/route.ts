@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 // GET /api/friends - Get user's friends and pending requests
 export async function GET() {
@@ -32,7 +33,7 @@ export async function GET() {
       .eq("status", "accepted");
 
     if (friendshipsError) {
-      console.error("Error fetching friends:", friendshipsError);
+      logger.error("Error fetching friends", "friends", friendshipsError);
     }
 
     // Get pending requests received
@@ -43,7 +44,7 @@ export async function GET() {
       .eq("status", "pending");
 
     if (pendingReceivedError) {
-      console.error("Error fetching pending requests:", pendingReceivedError);
+      logger.error("Error fetching pending requests", "friends", pendingReceivedError);
     }
 
     // Get pending requests sent
@@ -54,7 +55,7 @@ export async function GET() {
       .eq("status", "pending");
 
     if (pendingSentError) {
-      console.error("Error fetching sent requests:", pendingSentError);
+      logger.error("Error fetching sent requests", "friends", pendingSentError);
     }
 
     // Fetch user details for friends
@@ -93,7 +94,7 @@ export async function GET() {
       })),
     });
   } catch (error) {
-    console.error("Friends error:", error);
+    logger.error("Friends error", "friends", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

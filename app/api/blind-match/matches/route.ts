@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
   try {
@@ -18,7 +19,7 @@ export async function GET() {
       .order("matched_at", { ascending: false });
 
     if (error) {
-      console.error("Error fetching matches:", error);
+      logger.error("Error fetching matches", "blind-match", error);
       return NextResponse.json(
         { error: "Failed to fetch matches" },
         { status: 500 }
@@ -57,7 +58,7 @@ export async function GET() {
 
     return NextResponse.json({ matches: formattedMatches });
   } catch (error) {
-    console.error("Error:", error);
+    logger.error("Error fetching blind matches", "blind-match", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

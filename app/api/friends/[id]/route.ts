@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 // DELETE /api/friends/[id] - Reject friend request or remove friend
 export async function DELETE(
@@ -50,7 +51,7 @@ export async function DELETE(
       .eq("id", friendshipId);
 
     if (error) {
-      console.error("Error removing friendship:", error);
+      logger.error("Error removing friendship", "friends", error);
       return NextResponse.json(
         { error: "Failed to remove friendship" },
         { status: 500 }
@@ -59,7 +60,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Remove friendship error:", error);
+    logger.error("Remove friendship error", "friends", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -25,9 +25,10 @@ test.describe("Landing Page", () => {
   });
 
   test("shows three value propositions", async ({ page }) => {
-    await expect(page.locator("text=Endless Discovery")).toBeVisible();
-    await expect(page.locator("text=AI-Powered Matches")).toBeVisible();
-    await expect(page.locator("text=Import Everything")).toBeVisible();
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await expect(page.locator("text=Taste DNA")).toBeVisible();
+    await expect(page.locator("text=MashScore Matching")).toBeVisible();
+    await expect(page.locator("text=Year Wrapped")).toBeVisible();
   });
 
   test("login link navigates to /auth/login", async ({ page }) => {

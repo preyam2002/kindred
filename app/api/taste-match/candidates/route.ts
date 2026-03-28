@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
 import { fetchUserMediaWithItems } from "@/lib/db/media-helpers";
+import { logger } from "@/lib/logger";
 import type { User } from "@/types/database";
 
 interface UserMediaItem {
@@ -65,7 +66,7 @@ export async function GET() {
       .neq("id", userId);
 
     if (usersError || !otherUsers) {
-      console.error("Error fetching users:", usersError);
+      logger.error("Error fetching users", "taste-match", usersError);
       return NextResponse.json({ candidates: [] });
     }
 
@@ -102,7 +103,7 @@ export async function GET() {
     // Return top 50 candidates
     return NextResponse.json({ candidates: candidates.slice(0, 50) });
   } catch (error) {
-    console.error("Error fetching taste match candidates:", error);
+    logger.error("Error fetching taste match candidates", "taste-match", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

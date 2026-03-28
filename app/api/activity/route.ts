@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 // GET /api/activity - Get activity feed (user's own + friends' activities)
 export async function GET(request: Request) {
@@ -60,7 +61,7 @@ export async function GET(request: Request) {
     const { data: activities, error } = await query;
 
     if (error) {
-      console.error("Error fetching activity feed:", error);
+      logger.error("Error fetching activity feed", "activity", error);
       return NextResponse.json(
         { error: "Failed to fetch activity feed" },
         { status: 500 }
@@ -82,7 +83,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ activities: activitiesWithUsers });
   } catch (error) {
-    console.error("Activity feed error:", error);
+    logger.error("Activity feed error", "activity", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -134,7 +135,7 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
-      console.error("Error creating activity:", error);
+      logger.error("Error creating activity", "activity", error);
       return NextResponse.json(
         { error: "Failed to create activity" },
         { status: 500 }
@@ -143,7 +144,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ activity }, { status: 201 });
   } catch (error) {
-    console.error("Create activity error:", error);
+    logger.error("Create activity error", "activity", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

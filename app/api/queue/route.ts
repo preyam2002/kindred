@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 // GET /api/queue - Get user's queue with optional sorting
 export async function GET(request: Request) {
@@ -54,7 +55,7 @@ export async function GET(request: Request) {
     const { data: queueItems, error } = await query;
 
     if (error) {
-      console.error("Error fetching queue:", error);
+      logger.error("Error fetching queue", "queue", error);
       return NextResponse.json(
         { error: "Failed to fetch queue" },
         { status: 500 }
@@ -165,7 +166,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ queue: itemsWithMedia });
   } catch (error) {
-    console.error("Queue error:", error);
+    logger.error("Queue error", "queue", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -263,7 +264,7 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
-      console.error("Error adding to queue:", error);
+      logger.error("Error adding to queue", "queue", error);
       return NextResponse.json(
         { error: "Failed to add to queue" },
         { status: 500 }
@@ -272,7 +273,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ item }, { status: 201 });
   } catch (error) {
-    console.error("Add to queue error:", error);
+    logger.error("Add to queue error", "queue", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

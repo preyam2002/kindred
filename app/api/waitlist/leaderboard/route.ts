@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/db/supabase";
+import { logger } from "@/lib/logger";
 
 // GET - Public leaderboard of top referrers
 export async function GET(request: NextRequest) {
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
       .limit(limit);
 
     if (error) {
-      console.error("Error fetching leaderboard:", error);
+      logger.error("Error fetching leaderboard", "waitlist", error);
       return NextResponse.json(
         { error: "Failed to fetch leaderboard" },
         { status: 500 }
@@ -60,7 +61,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error in leaderboard GET:", error);
+    logger.error("Error in leaderboard GET", "waitlist", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

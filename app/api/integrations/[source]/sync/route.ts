@@ -7,6 +7,7 @@ import { scrapeGoodreadsProfile } from "@/lib/scrapers/goodreads-scraper";
 import { importGoodreadsScraped } from "@/lib/integrations/goodreads";
 import { scrapeLetterboxdProfile } from "@/lib/scrapers/letterboxd-scraper";
 import { importLetterboxdScraped } from "@/lib/integrations/letterboxd";
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
 
 // Route handler that delegates to specific integration sync handlers
 export async function POST(
@@ -19,6 +20,10 @@ export async function POST(
   }
 
   const { source } = await params;
+
+  // Rate limit: 5 syncs per 5 minutes per source
+  const rl = checkRateLimit(`sync:${source}:${session.user.id}`, RATE_LIMITS.sync);
+  if (!rl.success) return rateLimitResponse(rl);
 
   // Delegate to specific integration sync logic
   switch (source) {

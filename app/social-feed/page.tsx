@@ -255,7 +255,7 @@ export default function SocialFeedPage() {
                     onChange={(e) =>
                       setFilters({
                         ...filters,
-                        mediaType: e.target.value as any,
+                        mediaType: e.target.value as "all" | "anime" | "manga" | "book" | "movie" | "music",
                       })
                     }
                     className="w-full px-3 py-2 border border-border rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-transparent"

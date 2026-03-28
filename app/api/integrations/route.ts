@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
-    console.log("[Integrations][GET] Session info", {
+    logger.info("Session info", "integrations", {
       hasSession: !!session,
       userId: session?.user?.id,
       userEmail: session?.user?.email,
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
     const userEmail = session?.user?.email;
 
     if (!userId && !userEmail) {
-      console.warn("[Integrations][GET] Unauthorized - missing user id and email");
+      logger.warn("Unauthorized - missing user id and email", "integrations");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
         .single();
 
       if (!userByEmail) {
-        console.warn("[Integrations][GET] User not found for email", { userEmail });
+        logger.warn("User not found for email", "integrations", { userEmail });
         return NextResponse.json({ error: "User not found" }, { status: 404 });
       }
 
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (!userIdToUse) {
-      console.warn("[Integrations][GET] Unable to resolve user id", {
+      logger.warn("Unable to resolve user id", "integrations", {
         userId,
         userEmail,
       });
@@ -51,19 +52,19 @@ export async function GET(request: NextRequest) {
       .eq("user_id", userIdToUse);
 
     if (error) {
-      console.error("[Integrations][GET] Error fetching sources", error);
+      logger.error("Error fetching sources", "integrations", error);
       return NextResponse.json(
         { error: "Failed to fetch sources" },
         { status: 500 }
       );
     }
 
-    console.log("[Integrations][GET] Returning sources", {
+    logger.info("Returning sources", "integrations", {
       count: sources?.length ?? 0,
     });
     return NextResponse.json({ sources: sources || [] });
   } catch (error) {
-    console.error("[Integrations][GET] Unexpected error", error);
+    logger.error("Unexpected error", "integrations", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

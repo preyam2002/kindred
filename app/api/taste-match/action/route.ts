@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
+import { logger } from "@/lib/logger";
 
 interface MatchUpdateData {
   user1_status?: string;
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
         .eq("user2_id", user2_id);
 
       if (updateError) {
-        console.error("Error updating match:", updateError);
+        logger.error("Error updating match", "taste-match", updateError);
         return NextResponse.json(
           { error: "Failed to update match" },
           { status: 500 }
@@ -117,7 +118,7 @@ export async function POST(request: NextRequest) {
         .insert(insertData);
 
       if (insertError) {
-        console.error("Error creating match:", insertError);
+        logger.error("Error creating match", "taste-match", insertError);
         return NextResponse.json(
           { error: "Failed to create match" },
           { status: 500 }
@@ -130,7 +131,7 @@ export async function POST(request: NextRequest) {
       });
     }
   } catch (error) {
-    console.error("Error in taste match action:", error);
+    logger.error("Error in taste match action", "taste-match", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/db/supabase";
+import { logger } from "@/lib/logger";
 
 // POST - Join waitlist
 export async function POST(request: NextRequest) {
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (codeError || !generatedCode) {
-      console.error("Error generating referral code:", codeError);
+      logger.error("Error generating referral code", "waitlist", codeError);
       return NextResponse.json(
         { error: "Failed to generate referral code" },
         { status: 500 }
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (insertError) {
-      console.error("Error inserting waitlist entry:", insertError);
+      logger.error("Error inserting waitlist entry", "waitlist", insertError);
       return NextResponse.json(
         { error: "Failed to join waitlist" },
         { status: 500 }
@@ -111,7 +112,7 @@ export async function POST(request: NextRequest) {
       referredBy: validReferredBy,
     });
   } catch (error) {
-    console.error("Error in waitlist POST:", error);
+    logger.error("Error in waitlist POST", "waitlist", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -173,7 +174,7 @@ export async function GET(request: NextRequest) {
       createdAt: entry.created_at,
     });
   } catch (error) {
-    console.error("Error in waitlist GET:", error);
+    logger.error("Error in waitlist GET", "waitlist", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

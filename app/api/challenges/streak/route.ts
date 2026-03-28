@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
   try {
@@ -18,7 +19,7 @@ export async function GET() {
       .single();
 
     if (streakError && streakError.code !== "PGRST116") {
-      console.error("Streak error:", streakError);
+      logger.error("Streak error", "challenges", streakError);
     }
 
     // Get user's activity history to calculate streak
@@ -105,7 +106,7 @@ export async function GET() {
       next_level_points: nextLevelPoints,
     });
   } catch (error) {
-    console.error("Error fetching streak:", error);
+    logger.error("Error fetching streak", "challenges", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 // GET /api/collections/[id] - Get a specific collection with its items
 export async function GET(
@@ -40,7 +41,7 @@ export async function GET(
       .order("position", { ascending: true });
 
     if (itemsError) {
-      console.error("Error fetching collection items:", itemsError);
+      logger.error("Error fetching collection items", "collections", itemsError);
     }
 
     // Fetch media details for each item
@@ -64,7 +65,7 @@ export async function GET(
       items: itemsWithMedia,
     });
   } catch (error) {
-    console.error("Get collection error:", error);
+    logger.error("Get collection error", "collections", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -126,7 +127,7 @@ export async function PUT(
       .single();
 
     if (error) {
-      console.error("Error updating collection:", error);
+      logger.error("Error updating collection", "collections", error);
       return NextResponse.json(
         { error: "Failed to update collection" },
         { status: 500 }
@@ -135,7 +136,7 @@ export async function PUT(
 
     return NextResponse.json({ collection: updated });
   } catch (error) {
-    console.error("Update collection error:", error);
+    logger.error("Update collection error", "collections", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -186,7 +187,7 @@ export async function DELETE(
       .eq("id", id);
 
     if (error) {
-      console.error("Error deleting collection:", error);
+      logger.error("Error deleting collection", "collections", error);
       return NextResponse.json(
         { error: "Failed to delete collection" },
         { status: 500 }
@@ -195,7 +196,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Delete collection error:", error);
+    logger.error("Delete collection error", "collections", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -42,9 +42,10 @@ test.describe("Tablet (768×1024)", () => {
 
   test("landing page shows all value props", async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator("text=Endless Discovery")).toBeVisible();
-    await expect(page.locator("text=AI-Powered Matches")).toBeVisible();
-    await expect(page.locator("text=Import Everything")).toBeVisible();
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await expect(page.locator("text=Taste DNA")).toBeVisible();
+    await expect(page.locator("text=MashScore Matching")).toBeVisible();
+    await expect(page.locator("text=Year Wrapped")).toBeVisible();
   });
 
   test("platform cards visible", async ({ page }) => {

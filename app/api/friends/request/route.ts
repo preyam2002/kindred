@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 // POST /api/friends/request - Send friend request
 export async function POST(request: Request) {
@@ -77,7 +78,7 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
-      console.error("Error creating friend request:", error);
+      logger.error("Error creating friend request", "friends", error);
       return NextResponse.json(
         { error: "Failed to send friend request" },
         { status: 500 }
@@ -99,7 +100,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ friendship }, { status: 201 });
   } catch (error) {
-    console.error("Send friend request error:", error);
+    logger.error("Send friend request error", "friends", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

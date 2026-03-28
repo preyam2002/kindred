@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,9 +15,26 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { shareType, platform, metadata } = body;
 
+    const validShareTypes = ["profile", "mash", "challenge", "collection", "card", "wrapped"];
+    const validPlatforms = ["twitter", "facebook", "linkedin", "whatsapp", "copy", "native"];
+
     if (!shareType || !platform) {
       return NextResponse.json(
         { error: "shareType and platform are required" },
+        { status: 400 }
+      );
+    }
+
+    if (typeof shareType !== "string" || !validShareTypes.includes(shareType)) {
+      return NextResponse.json(
+        { error: `shareType must be one of: ${validShareTypes.join(", ")}` },
+        { status: 400 }
+      );
+    }
+
+    if (typeof platform !== "string" || !validPlatforms.includes(platform)) {
+      return NextResponse.json(
+        { error: `platform must be one of: ${validPlatforms.join(", ")}` },
         { status: 400 }
       );
     }
@@ -34,7 +52,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (shareError) {
-      console.error("Error recording share:", shareError);
+      logger.error("Error recording share", "share", shareError);
       return NextResponse.json(
         { error: "Failed to record share" },
         { status: 500 }
@@ -81,7 +99,7 @@ export async function POST(request: NextRequest) {
       referralCode: referralCode,
     });
   } catch (error) {
-    console.error("Error in share API:", error);
+    logger.error("Error in share API", "share", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -139,7 +157,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error tracking share click:", error);
+    logger.error("Error tracking share click", "share", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

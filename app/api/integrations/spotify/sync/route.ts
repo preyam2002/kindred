@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { syncSpotifyData, refreshSpotifyToken } from "@/lib/integrations/spotify";
 import { supabase } from "@/lib/db/supabase";
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function POST() {
   try {
@@ -10,6 +11,10 @@ export async function POST() {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // Rate limit: 5 syncs per 5 minutes
+    const rl = checkRateLimit(`sync:spotify:${session.user.id}`, RATE_LIMITS.sync);
+    if (!rl.success) return rateLimitResponse(rl);
 
     // Get Spotify source
     const { data: source, error: sourceError } = await supabase

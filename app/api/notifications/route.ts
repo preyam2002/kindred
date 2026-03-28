@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
   try {
@@ -44,7 +45,7 @@ export async function GET() {
       .limit(50);
 
     if (error) {
-      console.error("Error fetching notifications:", error);
+      logger.error("Error fetching notifications", "notifications", error);
       return NextResponse.json(
         { error: "Failed to fetch notifications" },
         { status: 500 }
@@ -59,7 +60,7 @@ export async function GET() {
       unreadCount,
     });
   } catch (error) {
-    console.error("Notifications error:", error);
+    logger.error("Notifications error", "notifications", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

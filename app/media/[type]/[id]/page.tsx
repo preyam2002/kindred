@@ -350,7 +350,7 @@ export default function MediaDetailPage() {
                 <ArrowUpDown className="w-4 h-4 text-muted-foreground" />
                 <select
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
+                  onChange={(e) => setSortBy(e.target.value as "newest" | "oldest" | "highest_rated" | "most_liked")}
                   className="px-3 py-2 border border-border rounded-lg bg-background text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
                 >
                   <option value="newest">Newest First</option>

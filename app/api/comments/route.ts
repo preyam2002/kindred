@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
+import { logger } from "@/lib/logger";
 
 // GET - Fetch comments for a media item
 export async function GET(request: NextRequest) {
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("Error fetching comments:", error);
+      logger.error("Error fetching comments", "comments", error);
       return NextResponse.json(
         { error: "Failed to fetch comments" },
         { status: 500 }
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ comments: enrichedComments });
   } catch (error) {
-    console.error("Error in comments GET:", error);
+    logger.error("Error in comments GET", "comments", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -118,7 +119,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error("Error creating comment:", error);
+      logger.error("Error creating comment", "comments", error);
       return NextResponse.json(
         { error: "Failed to create comment" },
         { status: 500 }
@@ -139,7 +140,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error in comments POST:", error);
+    logger.error("Error in comments POST", "comments", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -173,7 +174,7 @@ export async function DELETE(request: NextRequest) {
       .eq("user_id", session.user.id);
 
     if (error) {
-      console.error("Error deleting comment:", error);
+      logger.error("Error deleting comment", "comments", error);
       return NextResponse.json(
         { error: "Failed to delete comment" },
         { status: 500 }
@@ -182,7 +183,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error in comments DELETE:", error);
+    logger.error("Error in comments DELETE", "comments", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

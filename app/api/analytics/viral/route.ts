@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { supabase } from "@/lib/db/supabase";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
       .gte("created_at", startDate.toISOString());
 
     if (sharesError) {
-      console.error("Error fetching shares:", sharesError);
+      logger.error("Error fetching shares", "analytics", sharesError);
     }
 
     // Get referral stats
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
       .gte("created_at", startDate.toISOString());
 
     if (referralsError) {
-      console.error("Error fetching referrals:", referralsError);
+      logger.error("Error fetching referrals", "analytics", referralsError);
     }
 
     // Get share clicks
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
       .gte("clicked_at", startDate.toISOString());
 
     if (clicksError) {
-      console.error("Error fetching clicks:", clicksError);
+      logger.error("Error fetching clicks", "analytics", clicksError);
     }
 
     // Calculate metrics
@@ -160,7 +161,7 @@ export async function GET(request: NextRequest) {
       topSharers,
     });
   } catch (error) {
-    console.error("Error fetching viral analytics:", error);
+    logger.error("Error fetching viral analytics", "analytics", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

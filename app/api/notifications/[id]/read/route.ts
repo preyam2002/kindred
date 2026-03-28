@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 export async function POST(
   request: Request,
@@ -36,7 +37,7 @@ export async function POST(
       .eq("user_id", user.id);
 
     if (error) {
-      console.error("Error marking notification as read:", error);
+      logger.error("Error marking notification as read", "notifications", error);
       return NextResponse.json(
         { error: "Failed to mark notification as read" },
         { status: 500 }
@@ -45,7 +46,7 @@ export async function POST(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Mark as read error:", error);
+    logger.error("Mark as read error", "notifications", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
