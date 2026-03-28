@@ -105,23 +105,41 @@ export default function Home() {
           {/* Value Props */}
           <div className="mt-24 grid md:grid-cols-3 gap-8 max-w-4xl mx-auto animate-fadeInUp animate-delay-800">
             <div className="text-center space-y-3">
-              <h3 className="font-display text-xl font-semibold">Endless Discovery</h3>
+              <h3 className="font-display text-xl font-semibold">Taste DNA</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Find kindred spirits across your favorite media
+                Discover your unique taste profile across movies, books, anime, and music
               </p>
             </div>
             <div className="text-center space-y-3">
-              <h3 className="font-display text-xl font-semibold">AI-Powered Matches</h3>
+              <h3 className="font-display text-xl font-semibold">MashScore Matching</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Smart compatibility scoring based on taste overlap
+                AI-powered compatibility scoring based on taste overlap and rating philosophy
               </p>
             </div>
             <div className="text-center space-y-3">
-              <h3 className="font-display text-xl font-semibold">Import Everything</h3>
+              <h3 className="font-display text-xl font-semibold">Year Wrapped</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Sync your libraries from all your favorite platforms
+                Spotify Wrapped-style stories for your entire media consumption
               </p>
             </div>
+          </div>
+
+          {/* Feature highlights */}
+          <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto animate-fadeInUp animate-delay-800">
+            {[
+              "Blind Matching",
+              "Taste Challenges",
+              "Watch Together",
+              "Share Cards",
+              "Leaderboards",
+              "Daily Streaks",
+              "AI Chat",
+              "Mood Discovery",
+            ].map((feature) => (
+              <div key={feature} className="text-center py-3 px-4 rounded-xl border border-border/50 bg-card/30">
+                <span className="text-xs font-mono text-muted-foreground tracking-wider uppercase">{feature}</span>
+              </div>
+            ))}
           </div>
         </div>
       </main>
